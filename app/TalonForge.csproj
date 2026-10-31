@@ -8,6 +8,7 @@
     <AssemblyName>TalonForge</AssemblyName>
     <RootNamespace>TalonForge</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>TalonForge.ico</ApplicationIcon>
     <Version>0.1.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
