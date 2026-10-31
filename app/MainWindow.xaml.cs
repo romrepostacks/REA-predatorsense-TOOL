@@ -140,7 +140,7 @@ namespace ReaSense
             SideStatus.Text = $"Fans: {Mode}";
             DrawCurveMarker(ct);
 
-            if (Mode != "Custom" && Mode != "Curve" && Mode != "Tune") { FanLog.Write(Mode, ct, gt, null, null, cr, gr); return; }
+            if (Mode != "Custom" && Mode != "Curve" && Mode != "Tune") { FanLog.Write(Mode, ct, gt, null, null, cr, gr); ShowLogStatus(); return; }
             if (ct == null || gt == null) { StopManual("Lost the temperature reading."); return; }
             if (Mode == "Tune" && (ct >= SmartTune.LimitTemp || gt >= SmartTune.LimitTemp))
             {
@@ -168,6 +168,7 @@ namespace ReaSense
             Acer.SetFanSpeed(false, g);
             FanMsg.Text = $"CPU fan {c}%   GPU fan {g}%";
             FanLog.Write(Mode, ct, gt, c, g, cr, gr);
+            ShowLogStatus();
         }
 
         void ApplyCurve_Click(object sender, RoutedEventArgs e)
@@ -177,6 +178,26 @@ namespace ReaSense
             S.Curve = CurveText.Text;
             ModeCurve.IsChecked = true;
             SetMode("Curve");
+        }
+
+        // ---- Monitor logging: records only, never changes the fans ----
+
+        void LogToggle_Click(object sender, RoutedEventArgs e)
+        {
+            if (FanLog.Session == null) { FanLog.StartSession(); LogToggle.Content = "Stop logging"; }
+            else { LogMsg.Text = $"Saved {FanLog.SessionRows} readings to {FanLog.Session}"; FanLog.StopSession(); LogToggle.Content = "Start logging"; }
+        }
+
+        void LogFolder_Click(object sender, RoutedEventArgs e)
+        {
+            System.IO.Directory.CreateDirectory(FanLog.LogsDir);
+            Process.Start("explorer.exe", FanLog.LogsDir);
+        }
+
+        void ShowLogStatus()
+        {
+            if (FanLog.Session != null)
+                LogMsg.Text = $"Logging: {FanLog.SessionRows} readings ({FanLog.SessionRows * 2 / 60} min) to {System.IO.Path.GetFileName(FanLog.Session)}";
         }
 
         // ---- Smart Tune ----
@@ -466,6 +487,7 @@ namespace ReaSense
                 if (Sup.GpuOc && OcNormal.IsChecked != true) try { Acer.SetGpuOc(0); } catch { }
             }
             CpuLoad.Stop();
+            FanLog.StopSession();
             Tray.Visible = false;
             Tray.Dispose();
             Application.Current.Shutdown();

@@ -1,26 +1,102 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
 namespace ReaSense
 {
-    // Appends one line per fan tick to %APPDATA%\ReaSense\fanlog.csv (opens in Excel).
+    // CPU and GPU usage from Windows performance counters (no extra installs). Null if a counter is missing.
+    public static class Usage
+    {
+        static PerformanceCounter _cpu, _perf;
+        static List<PerformanceCounter> _gpu = new List<PerformanceCounter>();
+        static DateTime _gpuListed;
+
+        static PerformanceCounter Make(string cat, string name, string inst)
+        {
+            try { var c = new PerformanceCounter(cat, name, inst, true); c.NextValue(); return c; } catch { return null; }
+        }
+
+        public static int? CpuLoad()
+        {
+            _cpu = _cpu ?? Make("Processor Information", "% Processor Utility", "_Total") ?? Make("Processor", "% Processor Time", "_Total");
+            try { return _cpu == null ? (int?)null : (int)Math.Round(Math.Min(100, _cpu.NextValue())); } catch { return null; }
+        }
+
+        // CPU speed as % of base clock (above 100 = turbo).
+        public static int? CpuPerf()
+        {
+            _perf = _perf ?? Make("Processor Information", "% Processor Performance", "_Total");
+            try { return _perf == null ? (int?)null : (int)Math.Round(_perf.NextValue()); } catch { return null; }
+        }
+
+        // Busiest GPU engine type (3D, compute, ...) summed over processes, like Task Manager.
+        public static int? GpuLoad()
+        {
+            try
+            {
+                if ((DateTime.Now - _gpuListed).TotalSeconds > 20)   // processes come and go; re-list now and then
+                {
+                    foreach (var c in _gpu) c.Dispose();
+                    var cat = new PerformanceCounterCategory("GPU Engine");
+                    _gpu = cat.GetInstanceNames().Select(i => Make("GPU Engine", "Utilization Percentage", i)).Where(c => c != null).ToList();
+                    _gpuListed = DateTime.Now;
+                }
+                if (_gpu.Count == 0) return null;
+                var byType = new Dictionary<string, double>();
+                foreach (var c in _gpu)
+                {
+                    float v; try { v = c.NextValue(); } catch { continue; }
+                    var i = c.InstanceName.IndexOf("engtype_", StringComparison.Ordinal);
+                    var type = i < 0 ? "" : c.InstanceName.Substring(i);
+                    byType[type] = (byType.TryGetValue(type, out var s) ? s : 0) + v;
+                }
+                return (int)Math.Round(Math.Min(100, byType.Values.DefaultIfEmpty(0).Max()));
+            }
+            catch { return null; }
+        }
+    }
+
+    // Appends one line per fan tick to %APPDATA%\ReaSense\fanlog.csv (opens in Excel),
+    // and to a separate monitor-*.csv in the logs folder while the user has logging switched on.
     public static class FanLog
     {
-        public static readonly string Path = System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ReaSense", "fanlog.csv");
+        public static readonly string Dir = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ReaSense");
+        public static readonly string Path = System.IO.Path.Combine(Dir, "fanlog.csv");
+        public static readonly string LogsDir = System.IO.Path.Combine(Dir, "logs");
         const long MaxBytes = 5_000_000;   // about 2 days at 2 s ticks; the previous file is kept as fanlog.old.csv
+        const string Header = "time,mode,cpu_temp,gpu_temp,cpu_fan_pct,gpu_fan_pct,cpu_rpm,gpu_rpm,cpu_load_pct,cpu_speed_pct_of_base,gpu_load_pct";
+
+        public static string Session { get; private set; }
+        public static int SessionRows { get; private set; }
+
+        public static void StartSession()
+        {
+            Directory.CreateDirectory(LogsDir);
+            Session = System.IO.Path.Combine(LogsDir, $"monitor-{DateTime.Now:yyyyMMdd-HHmmss}.csv");
+            File.WriteAllText(Session, Header + "\r\n");
+            SessionRows = 0;
+        }
+
+        public static void StopSession() => Session = null;
 
         public static void Write(string mode, int? cpuTemp, int? gpuTemp, int? cpuPct, int? gpuPct, int? cpuRpm, int? gpuRpm)
         {
             try
             {
-                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path));
+                Directory.CreateDirectory(Dir);
                 var f = new FileInfo(Path);
-                if (f.Exists && f.Length > MaxBytes) { File.Delete(Path + ".old"); f.MoveTo(System.IO.Path.ChangeExtension(Path, ".old.csv")); }
-                if (!File.Exists(Path)) File.WriteAllText(Path, "time,mode,cpu_temp,gpu_temp,cpu_fan_pct,gpu_fan_pct,cpu_rpm,gpu_rpm\r\n");
-                File.AppendAllText(Path, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss},{mode},{cpuTemp},{gpuTemp},{cpuPct},{gpuPct},{cpuRpm},{gpuRpm}\r\n");
+                if (f.Exists && (f.Length > MaxBytes || File.ReadLines(Path).FirstOrDefault() != Header))
+                {
+                    var old = System.IO.Path.ChangeExtension(Path, ".old.csv");
+                    File.Delete(old); f.MoveTo(old);
+                }
+                if (!File.Exists(Path)) File.WriteAllText(Path, Header + "\r\n");
+                var line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss},{mode},{cpuTemp},{gpuTemp},{cpuPct},{gpuPct},{cpuRpm},{gpuRpm},{Usage.CpuLoad()},{Usage.CpuPerf()},{Usage.GpuLoad()}\r\n";
+                File.AppendAllText(Path, line);
+                if (Session != null) { File.AppendAllText(Session, line); SessionRows++; }
             }
             catch { }   // logging must never stop fan control
         }
