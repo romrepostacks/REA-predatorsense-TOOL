@@ -31,7 +31,7 @@ $Support = Test-AcerSupport
 $script:Allowed = $false   # no fan writes at all until the compatibility check allows them
 
 $form = New-Object Windows.Forms.Form -Property @{
-    Text = 'Predator Fan Control'; ClientSize = '360,330'; FormBorderStyle = 'FixedSingle'; MaximizeBox = $false
+    Text = 'Predator Fan Control'; ClientSize = '360,365'; FormBorderStyle = 'FixedSingle'; MaximizeBox = $false
     Font = New-Object Drawing.Font('Segoe UI', 10)
 }
 function Add-Control($c) { $form.Controls.Add($c); $c }
@@ -68,6 +68,16 @@ $btnCurve.Add_Click({ $modes['Curve'].Checked = $true; Set-Mode 'Curve' })
 $lblMsg = Add-Control (New-Object Windows.Forms.Label -Property @{ Location = '15,270'; Size = '250,50'; ForeColor = 'DimGray' })
 $btnSettings = Add-Control (New-Object Windows.Forms.Button -Property @{ Text = 'Settings'; Location = '272,280'; Size = '73,29' })
 $btnSettings.Add_Click({ Show-Settings })
+
+Add-Control (New-Object Windows.Forms.Label -Property @{ Text = 'GPU overclock'; Location = '15,330'; Size = '110,22' }) | Out-Null
+$cmbOc = Add-Control (New-Object Windows.Forms.ComboBox -Property @{ Location = '130,327'; Size = '135,25'; DropDownStyle = 'DropDownList' })
+$cmbOc.Items.AddRange([object[]]$GpuOcLevels.Keys)
+$cmbOc.Enabled = $false
+# Only user picks write; the initial read below sets the box without writing.
+$cmbOc.Add_SelectionChangeCommitted({
+    try { Set-GpuOc $GpuOcLevels[$cmbOc.SelectedItem]; $lblMsg.Text = "GPU overclock: $($cmbOc.SelectedItem)" }
+    catch { $lblMsg.Text = "GPU overclock failed: $($_.Exception.Message)" }
+})
 
 function Set-Mode([string]$m) {
     try {
@@ -144,6 +154,7 @@ function Update-Allowed {
     $script:Allowed = $ok
     foreach ($m in 'Max', 'Custom', 'Curve') { $modes[$m].Enabled = $ok }
     $btnCurve.Enabled = $ok
+    $cmbOc.Enabled = $ok -and $Support.GpuOc
     $ok
 }
 
@@ -162,7 +173,8 @@ function Show-Settings {
         "Model: $($Support.Model)  (tested: $(& $yn $Support.Tested))",
         "Acer gaming WMI: $(& $yn $Support.Wmi)",
         "Temperature sensors: $(& $yn $Support.Sensors)",
-        "Fan control commands: $(& $yn $Support.Fans)") -join "`n" }
+        "Fan control commands: $(& $yn $Support.Fans)",
+        "GPU overclock presets: $(& $yn $Support.GpuOc)") -join "`n" }
     $ok = New-Object Windows.Forms.Button -Property @{ Text = 'OK'; Location = '272,210'; Size = '73,29'; DialogResult = 'OK' }
     $dlg.Controls.AddRange(@($chkStart, $chkUntested, $lbl, $ok))
     $dlg.AcceptButton = $ok
@@ -190,6 +202,10 @@ $form.Add_FormClosing({
 $form.Add_Shown({ if ($Minimized) { $form.Hide() } })
 
 $cpuSlider.Value = $script:Cfg.Cpu; $gpuSlider.Value = $script:Cfg.Gpu
+if ($Support.GpuOc) {
+    $cur = Get-GpuOc
+    $cmbOc.SelectedItem = ($GpuOcLevels.GetEnumerator() | Where-Object Value -eq $cur | Select-Object -First 1).Key
+}
 $startMode = $script:Cfg.Mode   # checking Auto below saves over it
 $modes['Auto'].Checked = $true
 if ((Update-Allowed) -and $startMode -in 'Max', 'Custom', 'Curve') { $modes[$startMode].Checked = $true }

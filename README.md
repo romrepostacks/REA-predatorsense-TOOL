@@ -32,6 +32,9 @@ the tray while using Curve or Custom.
 in the tray in your last mode) and shows the compatibility check. The app remembers your last mode,
 curve and sliders in `%APPDATA%\PredatorFanControl\settings.json`.
 
+**GPU overclock** sets PredatorSense's Normal / Faster / Turbo GPU presets (misc settings 5 and 7).
+Normal and Turbo match the Linux driver; Faster is unconfirmed. If games crash, go back to Normal.
+
 **Other models:** at start the app makes read-only calls to check for Acer gaming WMI, temperature
 sensors and the fan commands. Fan modes are only enabled on models confirmed to work (currently
 PT315-52); on others they stay off unless you tick *Allow fan control on this untested model*.

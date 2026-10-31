@@ -54,6 +54,21 @@ function Get-Status {
     }
 }
 
+# GPU overclock preset, PredatorSense's Normal/Faster/Turbo. Misc settings 5 and 7 hold it
+# (Linux acer-wmi sets both: 0 normal, 2 turbo). Faster = 1 is a guess, unconfirmed.
+$GpuOcLevels = [ordered]@{ Normal = 0; Faster = 1; Turbo = 2 }
+function Get-GpuOc {
+    $r = Invoke-AcerGaming GetGamingMiscSetting 0x05
+    if ($r -band 0xFF) { return $null }
+    ($r -shr 8) -band 0xFF
+}
+function Set-GpuOc([int]$level) {
+    foreach ($idx in 0x05, 0x07) {
+        $r = Invoke-AcerGaming SetGamingMiscSetting ([uint64]$idx -bor ([uint64]$level -shl 8))
+        if ($r -band 0xFF) { throw ('SetGamingMiscSetting failed, status 0x{0:X2}' -f ($r -band 0xFF)) }
+    }
+}
+
 # Piecewise-linear fan curve. $Points: sorted list of @(tempC, percent).
 function Get-CurvePercent([double]$Temp, $Points) {
     if ($Temp -le $Points[0][0]) { return [int]$Points[0][1] }
@@ -81,7 +96,7 @@ $TestedModels = @('Predator PT315-52')
 
 # Read-only check of what this laptop supports. Makes only Get calls.
 function Test-AcerSupport {
-    $r = [ordered]@{ Model = (Get-CimInstance Win32_ComputerSystem).Model; Tested = $false; Wmi = $false; Sensors = $false; Fans = $false }
+    $r = [ordered]@{ Model = (Get-CimInstance Win32_ComputerSystem).Model; Tested = $false; Wmi = $false; Sensors = $false; Fans = $false; GpuOc = $false }
     $r.Tested = $r.Model -in $TestedModels
     try { $m = (Get-AcerGaming).CimClass.CimClassMethods; $r.Wmi = $true } catch { return [pscustomobject]$r }
     try { $r.Sensors = $null -ne (Get-Sensor 0x01) -and $null -ne (Get-Sensor 0x0A) } catch {}
@@ -89,5 +104,6 @@ function Test-AcerSupport {
         $r.Fans = $r.Sensors -and $m['SetGamingFanBehavior'] -and $m['SetGamingFanSpeed'] -and
             -not ((Invoke-AcerGaming GetGamingFanBehavior 0x9) -band 0xFF)
     } catch {}
+    try { $r.GpuOc = $null -ne (Get-GpuOc) } catch {}
     [pscustomobject]$r
 }
