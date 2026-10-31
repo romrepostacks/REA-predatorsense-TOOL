@@ -6,4 +6,9 @@ foreach ($t in $cases.Keys) {
     $got = Get-CurvePercent $t $pts
     if ($got -ne $cases[$t]) { throw "curve($t) = $got, expected $($cases[$t])" }
 }
+foreach ($bad in '70:101', '70', 'x:50', '') {
+    $threw = $false
+    try { ConvertFrom-CurveString $bad | Out-Null } catch { $threw = $true }
+    if (-not $threw) { throw "curve '$bad' should be rejected" }
+}
 'curve ok'

@@ -66,6 +66,11 @@ function Get-CurvePercent([double]$Temp, $Points) {
 }
 
 function ConvertFrom-CurveString([string]$Curve) {
-    $pts = $Curve -split ',' | ForEach-Object { $t, $p = $_ -split ':'; , @([double]$t, [int]$p) }
+    $pts = $Curve -split ',' | ForEach-Object {
+        if ($_ -notmatch '^\s*(\d+(\.\d+)?)\s*:\s*(\d+)\s*$' -or [int]$Matches[3] -gt 100) {
+            throw "Bad curve point '$_'. Use tempC:percent, percent 0-100, e.g. 70:60"
+        }
+        , @([double]$Matches[1], [int]$Matches[3])
+    }
     , @($pts | Sort-Object { $_[0] })
 }
