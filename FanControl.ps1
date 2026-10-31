@@ -45,7 +45,7 @@ $cpuSlider = New-Slider 'CPU' 105
 $gpuSlider = New-Slider 'GPU' 150
 
 Add-Control (New-Object Windows.Forms.Label -Property @{ Text = 'Curve (tempC:fan%)'; Location = '15,205'; Size = '330,20' }) | Out-Null
-$txtCurve = Add-Control (New-Object Windows.Forms.TextBox -Property @{ Text = '50:25,60:35,68:50,75:65,80:85,85:100'; Location = '15,228'; Size = '250,25' })
+$txtCurve = Add-Control (New-Object Windows.Forms.TextBox -Property @{ Text = '45:25,55:35,63:50,70:65,75:85,80:100'; Location = '15,228'; Size = '250,25' })
 $btnCurve = Add-Control (New-Object Windows.Forms.Button -Property @{ Text = 'Apply'; Location = '272,226'; Size = '73,29' })
 $btnCurve.Add_Click({ $modes['Curve'].Checked = $true; Set-Mode 'Curve' })
 
