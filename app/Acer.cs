@@ -93,12 +93,13 @@ namespace ReaSense
             Check(Call("SetGamingRgbKb", 1UL << zone | (ulong)c.R << 8 | (ulong)c.G << 16 | (ulong)c.B << 24), "SetGamingRgbKb");
         }
 
-        // Effect packet as PredatorSense 3.00 sends it to the 4-zone keyboard (10 bytes):
+        // Effect packet as PredatorSense 3.00 builds it for the 4-zone keyboard:
         // [mode, speed 1-9, brightness 0-100, flag, direction, R, G, B, 3, 1]; Static is [0, 0, brightness, 0 ... 0, 1].
+        // The BIOS method takes a 16-byte array (10 gives "Invalid parameter"), so the rest is zero.
         // Flag 8 marks Wave; direction (1 or 2) is used by Wave and Shifting only.
         public static byte[] EffectPacket(int mode, int speed, int brightness, int direction, Color c)
         {
-            var b = new byte[10];
+            var b = new byte[16];
             b[2] = (byte)Math.Max(0, Math.Min(100, brightness));
             b[9] = 1;
             if (mode == 0) return b;

@@ -13,7 +13,7 @@ namespace ReaSense
             base.OnStartup(e);
             if (e.Args.Contains("--selftest"))
             {
-                try { FanCurve.SelfTest(); Shutdown(0); }
+                try { FanCurve.SelfTest(); SmartTune.SelfTest(); Shutdown(0); }
                 catch (Exception ex) { Console.Error.WriteLine(ex.Message); Shutdown(1); }
                 return;
             }

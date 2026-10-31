@@ -33,6 +33,7 @@ namespace ReaSense
         bool Allowed;                         // fan, GPU and lighting writes permitted on this model
         string Mode = "Auto";
         FanCurve Curve, Cpu, Gpu;             // Curve = parsed text; Cpu/Gpu carry each fan's smoothing state
+        SmartTune Tune;                       // set while Mode == "Tune"
         double LastCpuTemp = 50;
         bool Loading = true, Quitting;
 
@@ -106,6 +107,7 @@ namespace ReaSense
                     Acer.SetFanMode(m == "Max" ? FanMode.Max : m == "Auto" ? FanMode.Auto : FanMode.Custom);
                 }
                 Mode = m;
+                if (m != "Tune") EndTune();
                 FanMsg.Text = m == "Auto" ? "The laptop controls the fans." : m == "Max" ? "Both fans at full speed." : "";
                 if (!Loading && Allowed) { S.FanMode = m; SaveFanSettings(); }
                 UpdateFans();
@@ -138,10 +140,18 @@ namespace ReaSense
             SideStatus.Text = $"Fans: {Mode}";
             DrawCurveMarker(ct);
 
-            if (Mode != "Custom" && Mode != "Curve") return;
+            if (Mode != "Custom" && Mode != "Curve" && Mode != "Tune") { FanLog.Write(Mode, ct, gt, null, null, cr, gr); return; }
             if (ct == null || gt == null) { StopManual("Lost the temperature reading."); return; }
+            if (Mode == "Tune" && (ct >= PanicTemp || gt >= PanicTemp)) { StopManual($"Smart Tune stopped at {Math.Max(ct.Value, gt.Value)}°C."); return; }
             int c, g;
-            if (Mode == "Curve") { c = Cpu.Next(ct.Value); g = Gpu.Next(gt.Value); }
+            if (Mode == "Tune")
+            {
+                Tune.Add(DateTime.Now, ct.Value, gt.Value, cr ?? 0, gr ?? 0);
+                if (Tune.Done) { FinishTune(); return; }
+                c = g = Tune.Level;
+                TuneMsg.Text = $"Step {Tune.Step} of {SmartTune.Levels.Length}: both fans at {Tune.Level}%, waiting for temperatures to settle ({Tune.HeldSeconds:0} s).";
+            }
+            else if (Mode == "Curve") { c = Cpu.Next(ct.Value); g = Gpu.Next(gt.Value); }
             else { c = (int)CpuSlider.Value; g = (int)GpuSlider.Value; }
             if (ct >= PanicTemp) c = 100;
             if (gt >= PanicTemp) g = 100;
@@ -149,6 +159,7 @@ namespace ReaSense
             Acer.SetFanSpeed(true, c);
             Acer.SetFanSpeed(false, g);
             FanMsg.Text = $"CPU fan {c}%   GPU fan {g}%";
+            FanLog.Write(Mode, ct, gt, c, g, cr, gr);
         }
 
         void ApplyCurve_Click(object sender, RoutedEventArgs e)
@@ -158,6 +169,57 @@ namespace ReaSense
             S.Curve = CurveText.Text;
             ModeCurve.IsChecked = true;
             SetMode("Curve");
+        }
+
+        // ---- Smart Tune ----
+
+        void TuneStart_Click(object sender, RoutedEventArgs e)
+        {
+            if (Mode == "Tune") { StopManual("Smart Tune stopped."); return; }
+            if (!Allowed) { TuneMsg.Text = "Fan control isn't enabled on this model."; return; }
+            if (WinForms.SystemInformation.PowerStatus.PowerLineStatus != WinForms.PowerLineStatus.Online)
+            { TuneMsg.Text = "Plug in the charger first: on battery the laptop limits power, so the results wouldn't match real use."; return; }
+            try
+            {
+                Acer.SetFanMode(FanMode.Custom);
+                Tune = new SmartTune();
+                Mode = "Tune";
+                foreach (var r in new[] { ModeAuto, ModeMax, ModeCustom, ModeCurve }) r.IsChecked = false;
+                TuneStart.Content = "Stop";
+                TuneResult.Visibility = Visibility.Collapsed;
+                FanMsg.Text = "";
+                UpdateFans();
+            }
+            catch (Exception ex) { StopManual("Error: " + ex.Message); }
+        }
+
+        void EndTune()
+        {
+            if (Tune == null) return;
+            Tune = null;
+            TuneStart.Content = "Start Smart Tune";
+            if (TuneMsg.Text.StartsWith("Step")) TuneMsg.Text = "Smart Tune stopped. Your curve wasn't changed.";
+        }
+
+        void FinishTune()
+        {
+            var results = Tune.Results;
+            var curve = SmartTune.BuildCurve(results, out var summary);
+            var lines = results.Select(r => $"{r.Pct}%:  CPU {r.Cpu:0}°C  GPU {r.Gpu:0}°C   {r.CpuRpm:0} / {r.GpuRpm:0} rpm");
+            TuneMsg.Text = "Done. " + summary;
+            TuneTable.Text = string.Join("\n", lines);
+            TuneCurve.Text = curve;
+            TuneResult.Visibility = Visibility.Visible;
+            Tune = null;                           // keep the message: EndTune runs from SetMode below
+            TuneStart.Content = "Start Smart Tune";
+            ModeAuto.IsChecked = true;             // hands the fans back until the user applies the curve
+        }
+
+        void TuneUse_Click(object sender, RoutedEventArgs e)
+        {
+            TuneMsg.Text = "Applied. Your previous curve was " + S.Curve;
+            CurveText.Text = TuneCurve.Text;
+            ApplyCurve_Click(sender, e);
         }
 
         void SaveFanSettings()
