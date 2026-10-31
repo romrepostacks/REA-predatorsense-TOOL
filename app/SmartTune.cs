@@ -51,7 +51,7 @@ namespace ReaSense
     {
         // Starts at full speed and steps down, so it ends at the level the laptop can't hold below LimitTemp.
         public static readonly int[] Levels = { 100, 85, 70, 55, 40 };
-        public const int LimitTemp = 95;                    // i7-10750H Tjmax is 100°C; 5° margin for sensor lag
+        public const int LimitTemp = 98;                    // i7-10750H Tjmax is 100°C (it throttles there); Kyle chose 98
         public const int MinHoldS = 120, MaxHoldS = 240;   // per level: 10-20 minutes in all
         // A step up is worth its noise if it cools the hotter chip by at least this much per 1000 rpm added (both fans).
         public const double WorthDegPer1000Rpm = 2.0;
