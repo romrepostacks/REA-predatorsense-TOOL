@@ -146,7 +146,7 @@ namespace ReaSense
             {
                 // Too hot at this level: the levels already measured are the result.
                 var hot = $"{Tune.Level}% fans reached {Math.Max(ct.Value, gt.Value)}°C, so it stopped stepping down.";
-                if (Tune.Results.Count < 2) { Acer.SetFanSpeed(true, 100); Acer.SetFanSpeed(false, 100); StopManual("Smart Tune stopped: " + hot); return; }
+                if (Tune.Results.Count < 2) { TuneMsg.Text = "Smart Tune stopped: " + hot + " Fans set to Max."; ModeMax.IsChecked = true; return; }
                 Tune.StopDescending();
                 FinishTune(hot);
                 return;
@@ -223,7 +223,7 @@ namespace ReaSense
             CpuLoad.Stop();
             Tune = null;                           // keep the message: EndTune runs from SetMode below
             TuneStart.Content = "Start Smart Tune";
-            ModeAuto.IsChecked = true;             // hands the fans back until the user applies the curve
+            ModeMax.IsChecked = true;              // Auto runs this laptop hot under load; Max until the user applies the curve
         }
 
         void TuneUse_Click(object sender, RoutedEventArgs e)
