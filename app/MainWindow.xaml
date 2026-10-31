@@ -142,9 +142,10 @@
                                 <StackPanel>
                                     <TextBlock Text="SMART TUNE" Style="{StaticResource Heading}"/>
                                     <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,10"
-                                               Text="Start a game or other heavy load, plug in the charger, then start. Both fans step through 40, 55, 70, 85 and 100%, holding each until temperatures settle (10 to 20 minutes in all). It then finds the speed past which more fan noise buys little cooling, and builds a gentle curve around it. It stops at 92°C. Every fan reading is also logged to %APPDATA%\ReaSense\fanlog.csv."/>
+                                               Text="Plug in the charger, start a heavy GPU load (a game, ComfyUI), then start. Both fans step through 40, 55, 70, 85 and 100%, holding each until temperatures settle (10 to 20 minutes in all). It then finds the speed past which more fan noise buys little cooling, and builds a gentle curve around it. It stops at 92°C. Every fan reading is also logged to %APPDATA%\ReaSense\fanlog.csv."/>
                                     <StackPanel Orientation="Horizontal">
                                         <Button x:Name="TuneStart" Content="Start Smart Tune" Style="{StaticResource Primary}" Click="TuneStart_Click"/>
+                                        <CheckBox x:Name="TuneCpuLoad" Content="Load all CPU cores during the test" IsChecked="True" Foreground="{StaticResource Text}" VerticalAlignment="Center" Margin="14,0,0,0"/>
                                     </StackPanel>
                                     <TextBlock x:Name="TuneMsg" TextWrapping="Wrap" Margin="0,10,0,0"/>
                                     <StackPanel x:Name="TuneResult" Visibility="Collapsed" Margin="0,10,0,0">

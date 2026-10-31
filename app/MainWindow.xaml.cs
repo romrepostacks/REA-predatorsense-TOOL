@@ -184,6 +184,7 @@ namespace ReaSense
                 Acer.SetFanMode(FanMode.Custom);
                 Tune = new SmartTune();
                 Mode = "Tune";
+                if (TuneCpuLoad.IsChecked == true) CpuLoad.Start();
                 foreach (var r in new[] { ModeAuto, ModeMax, ModeCustom, ModeCurve }) r.IsChecked = false;
                 TuneStart.Content = "Stop";
                 TuneResult.Visibility = Visibility.Collapsed;
@@ -195,6 +196,7 @@ namespace ReaSense
 
         void EndTune()
         {
+            CpuLoad.Stop();
             if (Tune == null) return;
             Tune = null;
             TuneStart.Content = "Start Smart Tune";
@@ -210,6 +212,7 @@ namespace ReaSense
             TuneTable.Text = string.Join("\n", lines);
             TuneCurve.Text = curve;
             TuneResult.Visibility = Visibility.Visible;
+            CpuLoad.Stop();
             Tune = null;                           // keep the message: EndTune runs from SetMode below
             TuneStart.Content = "Start Smart Tune";
             ModeAuto.IsChecked = true;             // hands the fans back until the user applies the curve
@@ -454,6 +457,7 @@ namespace ReaSense
                 try { Acer.SetFanMode(FanMode.Auto); } catch { }
                 if (Sup.GpuOc && OcNormal.IsChecked != true) try { Acer.SetGpuOc(0); } catch { }
             }
+            CpuLoad.Stop();
             Tray.Visible = false;
             Tray.Dispose();
             Application.Current.Shutdown();

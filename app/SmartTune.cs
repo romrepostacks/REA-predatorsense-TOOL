@@ -26,6 +26,25 @@ namespace ReaSense
         }
     }
 
+    // Built-in CPU load for Smart Tune: one busy thread per core, below-normal priority so the app stays responsive.
+    // ponytail: CPU only; GPU load still comes from the user's own workload (game, ComfyUI) until a shader load is added.
+    public static class CpuLoad
+    {
+        static volatile bool _run;
+        public static bool Running => _run;
+
+        public static void Start()
+        {
+            if (_run) return;
+            _run = true;
+            for (int i = 0; i < Environment.ProcessorCount; i++)
+                new System.Threading.Thread(() => { double x = 1; while (_run) x = Math.Sqrt(x * x + 1.0001); })
+                { IsBackground = true, Priority = System.Threading.ThreadPriority.BelowNormal }.Start();
+        }
+
+        public static void Stop() => _run = false;
+    }
+
     // Smart Tune: holds both fans at each test level under the user's own load until temperatures settle,
     // then picks the level past which more fan buys little cooling, and builds a gentle curve around it.
     public class SmartTune
