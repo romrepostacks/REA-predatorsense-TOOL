@@ -30,7 +30,7 @@ $reads = [ordered]@{
     'GetGamingMiscSetting profile'       = @('GetGamingMiscSetting', 0x0B)
 }
 foreach ($k in $reads.Keys) {
-    try   { '{0,-36} 0x{1:X16}' -f $k, (Invoke-AcerGaming @($reads[$k])) }
+    try   { '{0,-36} 0x{1:X16}' -f $k, (Invoke-AcerGaming $reads[$k][0] $reads[$k][1]) }
     catch { '{0,-36} ERROR {1}' -f $k, $_.Exception.Message }
 }
 
