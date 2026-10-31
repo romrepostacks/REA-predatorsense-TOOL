@@ -1,9 +1,10 @@
 # Fan control window for the Triton 300. Start it with FanControl.cmd.
 # Closing the window returns the fans to auto. Minimizing hides it to the tray.
+# Custom and Curve are re-applied every 2 s, forced to 100% at $PanicTemp, and drop to Auto on any error.
 . $PSScriptRoot\acer.ps1
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 
-$PanicTemp = 92   # the curve forces 100% at or above this
+$PanicTemp = 92   # Custom and Curve force 100% at or above this
 $script:Mode = 'Auto'
 $script:Points = $null
 
@@ -32,7 +33,6 @@ function New-Slider($label, $y) {
     $tb.Value = 60   # after Maximum, which defaults to 10
     $val = Add-Control (New-Object Windows.Forms.Label -Property @{ Text = '60%'; Location = "295,$($y + 8)"; Size = '50,22' })
     $tb.Add_ValueChanged({ $val.Text = "$($this.Value)%" }.GetNewClosure())
-    $tb.Add_MouseUp({ if ($script:Mode -eq 'Custom') { Set-Mode 'Custom' } })
     $tb
 }
 $cpuSlider = New-Slider 'CPU' 105
@@ -50,15 +50,21 @@ function Set-Mode([string]$m) {
         switch ($m) {
             'Auto'   { Set-Behavior $AUTO }
             'Max'    { Set-Behavior $TURBO }
-            'Custom' { Set-Behavior $CUSTOM; Set-Speed $CPU_FAN $cpuSlider.Value; Set-Speed $GPU_FAN $gpuSlider.Value }
+            'Custom' { $script:Points = $null; Set-Behavior $CUSTOM }
             'Curve'  { $script:Points = ConvertFrom-CurveString $txtCurve.Text; Set-Behavior $CUSTOM }
         }
         $script:Mode = $m
         $lblMsg.Text = "Mode: $m"
         Update-Fans
     } catch {
-        $lblMsg.Text = "Error: $($_.Exception.Message)"
+        Stop-Manual "Error: $($_.Exception.Message)"
     }
+}
+
+# Any failure while we hold the fans hands them back to the laptop.
+function Stop-Manual([string]$why) {
+    $modes['Auto'].Checked = $true
+    $lblMsg.Text = "$why  Switched to Auto."
 }
 
 function Update-Fans {
@@ -66,17 +72,18 @@ function Update-Fans {
     $lblCpu.Text = "CPU  $($s.CpuTemp) C   $($s.CpuRpm) rpm"
     $lblGpu.Text = "GPU  $($s.GpuTemp) C   $($s.GpuRpm) rpm"
     $tray.Text = "CPU $($s.CpuTemp)C  GPU $($s.GpuTemp)C  ($script:Mode)"
-    if ($script:Mode -ne 'Curve') { return }
-    # No temperature means flying blind: hand control back to the laptop.
-    if ($null -eq $s.CpuTemp -or $null -eq $s.GpuTemp) {
-        $modes['Auto'].Checked = $true
-        $lblMsg.Text = 'Lost temperature reading, switched to Auto.'
-        return
+    if ($script:Mode -notin 'Custom', 'Curve') { return }
+    # No temperature means flying blind.
+    if ($null -eq $s.CpuTemp -or $null -eq $s.GpuTemp) { Stop-Manual 'Lost temperature reading.'; return }
+    if ($script:Points) {
+        $c = Get-CurvePercent $s.CpuTemp $script:Points; $g = Get-CurvePercent $s.GpuTemp $script:Points
+    } else {
+        $c = $cpuSlider.Value; $g = $gpuSlider.Value
     }
-    $c = if ($s.CpuTemp -ge $PanicTemp) { 100 } else { Get-CurvePercent $s.CpuTemp $script:Points }
-    $g = if ($s.GpuTemp -ge $PanicTemp) { 100 } else { Get-CurvePercent $s.GpuTemp $script:Points }
+    if ($s.CpuTemp -ge $PanicTemp) { $c = 100 }
+    if ($s.GpuTemp -ge $PanicTemp) { $g = 100 }
     Set-Speed $CPU_FAN $c; Set-Speed $GPU_FAN $g
-    $lblMsg.Text = "Mode: Curve   CPU fan $c%   GPU fan $g%"
+    $lblMsg.Text = "Mode: $script:Mode   CPU fan $c%   GPU fan $g%"
 }
 
 $tray = New-Object Windows.Forms.NotifyIcon -Property @{
@@ -85,7 +92,7 @@ $tray.Add_DoubleClick({ $form.Show(); $form.WindowState = 'Normal'; $form.Activa
 $form.Add_Resize({ if ($form.WindowState -eq 'Minimized') { $form.Hide() } })
 
 $timer = New-Object Windows.Forms.Timer -Property @{ Interval = 2000 }
-$timer.Add_Tick({ try { Update-Fans } catch { $lblMsg.Text = "Error: $($_.Exception.Message)" } })
+$timer.Add_Tick({ try { Update-Fans } catch { Stop-Manual "Error: $($_.Exception.Message)" } })
 
 $form.Add_FormClosing({
     $timer.Stop()

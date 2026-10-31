@@ -24,7 +24,8 @@ Linux driver lists, so `probe.ps1` checks what this BIOS actually supports befor
 
 Double-click `FanControl.cmd` (it asks for admin). The window shows live temps and RPM and has
 four modes: Auto, Max, Custom (CPU and GPU sliders) and Curve (`tempC:fan%` points, applied every
-2 seconds). Minimizing hides it to the tray; closing it returns the fans to auto, so leave it in
+2 seconds). Custom and Curve are re-applied every 2 seconds, forced to 100% at 92C, and drop
+to Auto on any error. Minimizing hides it to the tray; closing it returns the fans to auto, so leave it in
 the tray while using Curve or Custom.
 
 ## Scripts (elevated PowerShell)
