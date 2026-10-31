@@ -10,9 +10,10 @@ $PanicTemp = 92   # Custom and Curve force 100% at or above this
 $script:Mode = 'Auto'
 $script:Points = $null
 # Curve smoothing, to stop surging on short CPU spikes. Per 2 s tick:
-$Smooth = 0.25    # weight of the newest reading in the averaged temperature (about 8 s to settle)
-$StepUp = 10      # most a fan rises, in %
-$StepDown = 3     # most a fan falls, in %
+$Smooth = 0.12    # weight of the newest reading in the averaged temperature (about 16 s to settle)
+$StepUp = 4       # most a fan rises, in %
+$StepDown = 2     # most a fan falls, in %
+$Deadband = 4     # ignore curve changes smaller than this, in %
 $script:Last = @{ Cpu = 100; Gpu = 100 }
 $script:Avg = @{ Cpu = $null; Gpu = $null }
 
@@ -113,6 +114,7 @@ function Get-SmoothFan([string]$k, [double]$temp) {
     $script:Avg[$k] = $a
     $target = Get-CurvePercent $a $script:Points
     $last = $script:Last[$k]
+    if ([math]::Abs($target - $last) -lt $Deadband) { return $last }
     [int][math]::Min([math]::Max($target, $last - $StepDown), $last + $StepUp)
 }
 

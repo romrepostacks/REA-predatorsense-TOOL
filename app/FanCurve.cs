@@ -8,9 +8,10 @@ namespace ReaSense
     // Temperature -> fan % curve with smoothing, so short CPU spikes don't make the fans surge.
     public class FanCurve
     {
-        public const double Smooth = 0.25;   // weight of the newest reading per tick (about 8 s to settle at 2 s ticks)
-        public const int StepUp = 10;        // most a fan rises per tick, in %
-        public const int StepDown = 3;       // most a fan falls per tick, in %
+        public const double Smooth = 0.12;   // weight of the newest reading per tick (about 16 s to settle at 2 s ticks)
+        public const int StepUp = 4;         // most a fan rises per tick, in %
+        public const int StepDown = 2;       // most a fan falls per tick, in %
+        public const int Deadband = 4;       // ignore curve changes smaller than this, in %
 
         public readonly (double Temp, int Percent)[] Points;
         double? _avg;
@@ -48,6 +49,7 @@ namespace ReaSense
         {
             _avg = _avg == null ? temp : _avg + Smooth * (temp - _avg.Value);
             var target = Interpolate(Points, _avg.Value);
+            if (Math.Abs(target - _last) < Deadband) return _last;
             _last = Math.Min(Math.Max(target, _last - StepDown), _last + StepUp);
             return _last;
         }
@@ -65,6 +67,10 @@ namespace ReaSense
             }
             var c = new FanCurve("50:20,80:100");
             if (c.Next(50) != 100 - StepDown) throw new Exception("fans should ramp down slowly from 100%");
+            var d = new FanCurve("50:50,80:80");
+            for (int i = 0; i < 100; i++) d.Next(60);
+            int settled = d.Next(60);
+            if (d.Next(85) != settled) throw new Exception("a one-tick spike should not move the fans");
         }
     }
 }
