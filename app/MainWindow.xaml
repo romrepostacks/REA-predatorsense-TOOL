@@ -137,16 +137,24 @@
                                     <TextBlock Text="FAN CURVE" Style="{StaticResource Heading}"/>
                                     <Border Background="{StaticResource Bg}" CornerRadius="8" Height="160" Padding="8">
                                         <Canvas x:Name="CurvePlot" ClipToBounds="True">
+                                            <Polyline x:Name="GpuCurveLine" Stroke="#A78BFA" StrokeThickness="2.5" StrokeLineJoin="Round"/>
                                             <Polyline x:Name="CurveLine" Stroke="{StaticResource Accent}" StrokeThickness="2.5" StrokeLineJoin="Round"/>
                                             <Line x:Name="CurveNow" Stroke="{StaticResource Warn}" StrokeThickness="1" StrokeDashArray="3 3" Visibility="Collapsed"/>
                                         </Canvas>
                                     </Border>
                                     <TextBlock Text="Points as temperature:fan%. Fans follow an averaged temperature and change gradually, and go to 100% when the temperature averages 92°C over about 10 seconds, or reads 98°C once."
                                                Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10"/>
-                                    <DockPanel>
-                                        <Button DockPanel.Dock="Right" Content="Apply curve" Style="{StaticResource Primary}" Click="ApplyCurve_Click" Margin="8,0,0,0"/>
+                                    <CheckBox x:Name="LinkCurves" Content="Same curve for both fans" Foreground="{StaticResource Text}" Margin="0,0,0,10"
+                                              Checked="LinkCurves_Changed" Unchecked="LinkCurves_Changed"/>
+                                    <DockPanel Margin="0,0,0,8">
+                                        <TextBlock x:Name="CpuCurveLabel" Text="CPU fan" Width="80" VerticalAlignment="Center" Foreground="{StaticResource Accent}"/>
                                         <TextBox x:Name="CurveText" TextChanged="CurveText_TextChanged"/>
                                     </DockPanel>
+                                    <DockPanel x:Name="GpuCurveRow" Margin="0,0,0,8">
+                                        <TextBlock Text="GPU fan" Width="80" VerticalAlignment="Center" Foreground="#A78BFA"/>
+                                        <TextBox x:Name="GpuCurveText" TextChanged="CurveText_TextChanged"/>
+                                    </DockPanel>
+                                    <Button Content="Apply curve" Style="{StaticResource Primary}" Click="ApplyCurve_Click" HorizontalAlignment="Right"/>
                                 </StackPanel>
                             </Border>
 
@@ -175,10 +183,15 @@
                                     <TextBlock x:Name="TuneMsg" TextWrapping="Wrap" Margin="0,10,0,0"/>
                                     <StackPanel x:Name="TuneResult" Visibility="Collapsed" Margin="0,10,0,0">
                                         <TextBlock x:Name="TuneTable" FontFamily="Consolas" Foreground="{StaticResource Muted}" Margin="0,0,0,10"/>
-                                        <DockPanel>
-                                            <Button DockPanel.Dock="Right" Content="Use this curve" Style="{StaticResource Primary}" Click="TuneUse_Click" Margin="8,0,0,0"/>
+                                        <DockPanel Margin="0,0,0,8">
+                                            <TextBlock x:Name="TuneCpuLabel" Text="Both fans" Width="80" VerticalAlignment="Center"/>
                                             <TextBox x:Name="TuneCurve"/>
                                         </DockPanel>
+                                        <DockPanel x:Name="TuneGpuRow" Margin="0,0,0,8" Visibility="Collapsed">
+                                            <TextBlock Text="GPU fan" Width="80" VerticalAlignment="Center"/>
+                                            <TextBox x:Name="TuneGpuCurve"/>
+                                        </DockPanel>
+                                        <Button Content="Use this curve" Style="{StaticResource Primary}" Click="TuneUse_Click" HorizontalAlignment="Right"/>
                                     </StackPanel>
                                 </StackPanel>
                             </Border>

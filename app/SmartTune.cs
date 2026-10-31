@@ -167,32 +167,37 @@ namespace ReaSense
         }
 
         // Index of the sweet spot: the first level where the next step up isn't worth its extra rpm.
-        public static int SweetSpot(IList<Result> r)
+        // chip: null = both fans together, "cpu" or "gpu" = that fan alone (judged on its own rpm, so the bar is doubled).
+        public static int SweetSpot(IList<Result> r, string chip = null)
         {
             for (int i = 0; i + 1 < r.Count; i++)
             {
-                double gain = Math.Max(Math.Max(r[i].Cpu - r[i + 1].Cpu, r[i].Gpu - r[i + 1].Gpu), (r[i + 1].CpuSpeed - r[i].CpuSpeed) / SpeedPctPerDeg);
-                double addedRpm = Math.Max(1, r[i + 1].Rpm - r[i].Rpm);
-                if (gain / (addedRpm / 1000) < WorthDegPer1000Rpm) return i;
+                double cpuGain = Math.Max(r[i].Cpu - r[i + 1].Cpu, (r[i + 1].CpuSpeed - r[i].CpuSpeed) / SpeedPctPerDeg);
+                double gpuGain = r[i].Gpu - r[i + 1].Gpu;
+                double gain = chip == "cpu" ? cpuGain : chip == "gpu" ? gpuGain : Math.Max(cpuGain, gpuGain);
+                double rpm(Result x) => chip == "cpu" ? x.CpuRpm : chip == "gpu" ? x.GpuRpm : x.Rpm;
+                double addedRpm = Math.Max(1, rpm(r[i + 1]) - rpm(r[i]));
+                double bar = chip == null ? WorthDegPer1000Rpm : 2 * WorthDegPer1000Rpm;
+                if (gain / (addedRpm / 1000) < bar) return i;
             }
             return r.Count - 1;
         }
 
         // Curve that holds the sweet-spot fan speed at the temperature it settled at, eases in below it,
         // and climbs to 100% above it no faster than MaxSlope.
-        public static string BuildCurve(IList<Result> results, out string summary)
+        public static string BuildCurve(IList<Result> results, out string summary, string chip = null)
         {
             var r = results.OrderBy(x => x.Pct).ToList();
-            int k = SweetSpot(r);
+            int k = SweetSpot(r, chip);
             // Anchor on the chip whose temperature actually moves with the fans (a CPU pinned at its limit doesn't).
             bool cpuPinned = r.Max(x => x.Cpu) - r.Min(x => x.Cpu) < 2;
-            double anchor = cpuPinned ? r[k].Gpu : r[k].Hot;
+            double anchor = chip == "cpu" ? r[k].Cpu : chip == "gpu" ? r[k].Gpu : cpuPinned ? r[k].Gpu : r[k].Hot;
             int p = r[k].Pct, t = (int)Math.Round(Math.Min(85, Math.Max(55, anchor)));
             int lowPct = 25, midPct = (lowPct + p) / 2;
             int span = (int)Math.Ceiling((p - lowPct) / MaxSlope);       // degrees from lowPct to p at MaxSlope
             var pts = new List<(int, int)> { (t - span - 4, lowPct), (t - span / 2 - 2, midPct), (t, p) };
             if (p < 100) pts.Add((Math.Min(91, t + (int)Math.Ceiling((100 - p) / MaxSlope)), 100));
-            summary = $"Sweet spot: {p}% fans, settling at CPU {r[k].Cpu:0}°C / GPU {r[k].Gpu:0}°C under this load."
+            summary = $"Sweet spot{(chip == null ? "" : " (" + chip.ToUpper() + " fan)")}: {p}%, settling at CPU {r[k].Cpu:0}°C / GPU {r[k].Gpu:0}°C under this load."
                 + (cpuPinned ? " The CPU stayed at its limit at every level, so more fan bought clock speed, not a cooler CPU." : "");
             return string.Join(",", pts.Select(x => $"{x.Item1}:{x.Item2}"));
         }
@@ -215,6 +220,8 @@ namespace ReaSense
                 .Select(x => new Result { Pct = x.Item1, Cpu = x.Item2, Gpu = x.Item3, CpuRpm = x.Item4, GpuRpm = x.Item5, CpuSpeed = x.Item6 }).ToList();
             if (SweetSpot(kyle) != 2) throw new Exception($"Kyle's run: sweet spot {SweetSpot(kyle)}, expected 2");
             if (FanCurve.Interpolate(FanCurve.Parse(BuildCurve(kyle, out _)), 77) != 70) throw new Exception("Kyle's run: curve should hold 70% at the GPU's 77°C");
+            if (SweetSpot(kyle, "gpu") != 2) throw new Exception($"Kyle's run: GPU fan sweet spot {SweetSpot(kyle, "gpu")}, expected 2");
+            if (SweetSpot(kyle, "cpu") != 1) throw new Exception($"Kyle's run: CPU fan sweet spot {SweetSpot(kyle, "cpu")}, expected 1");
 
             var tune = new SmartTune(); var t0 = DateTime.Now;
             for (int s = 0; s <= MaxHoldS; s += 2) tune.Add(t0.AddSeconds(s), 70, 60, 3000, 3000);

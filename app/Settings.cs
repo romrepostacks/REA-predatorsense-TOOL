@@ -10,7 +10,8 @@ namespace ReaSense
     public class Settings
     {
         [DataMember] public string FanMode;
-        [DataMember] public string Curve;
+        [DataMember] public string Curve, GpuCurve;   // Curve drives the CPU fan, or both fans when LinkCurves
+        [DataMember] public bool LinkCurves;
         [DataMember] public int CpuPercent, GpuPercent;
         [DataMember] public bool AllowUntested, HideDisclaimer;
         [DataMember] public string Effect;
@@ -25,6 +26,8 @@ namespace ReaSense
         {
             FanMode = "Auto";
             Curve = "45:25,55:35,63:50,70:65,75:85,80:100";
+            GpuCurve = null;      // null = start from Curve
+            LinkCurves = true;
             CpuPercent = GpuPercent = 60;
             Effect = "Static";
             Brightness = 100; Speed = 4; Direction = 1;

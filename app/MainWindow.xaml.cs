@@ -34,7 +34,7 @@ namespace ReaSense
 
         bool Allowed;                         // fan, GPU and lighting writes permitted on this model
         string Mode = "Auto";
-        FanCurve Curve, Cpu, Gpu;             // Curve = parsed text; Cpu/Gpu carry each fan's smoothing state
+        FanCurve Cpu, Gpu;                    // each fan's curve and smoothing state
         SmartTune Tune;                       // set while Mode == "Tune"
         double LastCpuTemp = 50;
         bool Loading = true, Quitting;
@@ -52,6 +52,9 @@ namespace ReaSense
             CpuSlider.Value = S.CpuPercent;
             GpuSlider.Value = S.GpuPercent;
             CurveText.Text = S.Curve;
+            GpuCurveText.Text = S.GpuCurve ?? S.Curve;
+            LinkCurves.IsChecked = S.LinkCurves;
+            ShowCurveRows();
             BrightSlider.Value = S.Brightness;
             SpeedSlider.Value = S.Speed;
             (S.Direction == 2 ? DirLtr : DirRtl).IsChecked = true;
@@ -105,7 +108,7 @@ namespace ReaSense
             {
                 if (Allowed)
                 {
-                    if (m == "Curve") { Curve = new FanCurve(CurveText.Text); Cpu = new FanCurve(CurveText.Text); Gpu = new FanCurve(CurveText.Text); }
+                    if (m == "Curve") { Cpu = new FanCurve(CurveText.Text); Gpu = new FanCurve(GpuText); }
                     Acer.SetFanMode(m == "Max" ? FanMode.Max : m == "Auto" ? FanMode.Auto : FanMode.Custom);
                 }
                 Mode = m;
@@ -178,9 +181,11 @@ namespace ReaSense
 
         void ApplyCurve_Click(object sender, RoutedEventArgs e)
         {
-            try { FanCurve.Parse(CurveText.Text); }
+            try { FanCurve.Parse(CurveText.Text); FanCurve.Parse(GpuText); }
             catch (FormatException ex) { FanMsg.Text = ex.Message; return; }
             S.Curve = CurveText.Text;
+            S.GpuCurve = GpuCurveText.Text;
+            S.LinkCurves = LinkCurves.IsChecked == true;
             ModeCurve.IsChecked = true;
             SetMode("Curve");
         }
@@ -240,7 +245,12 @@ namespace ReaSense
         void FinishTune(string note)
         {
             var results = Tune.Results;
-            var curve = SmartTune.BuildCurve(results, out var summary);
+            string summary, gpuSummary = "";
+            var curve = Linked ? SmartTune.BuildCurve(results, out summary) : SmartTune.BuildCurve(results, out summary, "cpu");
+            TuneGpuCurve.Text = Linked ? "" : SmartTune.BuildCurve(results, out gpuSummary, "gpu");
+            TuneGpuRow.Visibility = Linked ? Visibility.Collapsed : Visibility.Visible;
+            TuneCpuLabel.Text = Linked ? "Both fans" : "CPU fan";
+            summary = (summary + " " + gpuSummary).Trim();
             var lines = results.Select(r => $"{r.Pct}%:  CPU {r.Cpu:0}°C  GPU {r.Gpu:0}°C   {r.CpuRpm:0} / {r.GpuRpm:0} rpm");
             TuneMsg.Text = ("Done. " + note + " " + summary).Replace("  ", " ");
             TuneTable.Text = string.Join("\n", lines);
@@ -254,8 +264,9 @@ namespace ReaSense
 
         void TuneUse_Click(object sender, RoutedEventArgs e)
         {
-            TuneMsg.Text = "Applied. Your previous curve was " + S.Curve;
+            TuneMsg.Text = "Applied. Your previous curve was " + S.Curve + (Linked ? "" : " (CPU), " + (S.GpuCurve ?? S.Curve) + " (GPU)");
             CurveText.Text = TuneCurve.Text;
+            if (!Linked) GpuCurveText.Text = TuneGpuCurve.Text;
             ApplyCurve_Click(sender, e);
         }
 
@@ -267,19 +278,33 @@ namespace ReaSense
 
         void CurveText_TextChanged(object sender, TextChangedEventArgs e) => DrawCurve();
 
+        void LinkCurves_Changed(object sender, RoutedEventArgs e) { ShowCurveRows(); DrawCurve(); }
+
+        bool Linked => LinkCurves.IsChecked == true;
+        string GpuText => Linked ? CurveText.Text : GpuCurveText.Text;   // linked: one curve drives both fans
+
+        void ShowCurveRows()
+        {
+            GpuCurveRow.Visibility = GpuCurveLine.Visibility = Linked ? Visibility.Collapsed : Visibility.Visible;
+            CpuCurveLabel.Text = Linked ? "Both fans" : "CPU fan";
+        }
+
         // Plot spans 30-100°C by 0-100%.
         Point Plot(double temp, double pct) =>
             new Point((temp - 30) / 70 * CurvePlot.ActualWidth, (1 - pct / 100) * CurvePlot.ActualHeight);
 
         void DrawCurve()
         {
-            CurveLine.Points.Clear();
-            try
+            foreach (var (line, text) in new[] { (CurveLine, CurveText.Text), (GpuCurveLine, GpuCurveText.Text) })
             {
-                var pts = FanCurve.Parse(CurveText.Text);
-                for (int t = 30; t <= 100; t += 2) CurveLine.Points.Add(Plot(t, FanCurve.Interpolate(pts, t)));
+                line.Points.Clear();
+                try
+                {
+                    var pts = FanCurve.Parse(text);
+                    for (int t = 30; t <= 100; t += 2) line.Points.Add(Plot(t, FanCurve.Interpolate(pts, t)));
+                }
+                catch (FormatException) { }
             }
-            catch (FormatException) { }
         }
 
         void DrawCurveMarker(int? temp)
