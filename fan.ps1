@@ -15,31 +15,6 @@ param(
 )
 . $PSScriptRoot\acer.ps1
 
-$FAN_BITS = 0x1 -bor 0x8           # CPU bit 0, GPU bit 3
-$CPU_FAN = 0x1; $GPU_FAN = 0x4
-$AUTO = 1; $TURBO = 2; $CUSTOM = 3
-
-function Set-Behavior([int]$m) {
-    $in = [uint64]$FAN_BITS -bor ([uint64]$m -shl 16) -bor ([uint64]$m -shl 22)
-    $r = Invoke-AcerGaming SetGamingFanBehavior $in
-    if ($r -band 0xFF) { throw ('SetGamingFanBehavior failed, status 0x{0:X2}' -f ($r -band 0xFF)) }
-}
-function Set-Speed([int]$fan, [int]$pct) {
-    $r = Invoke-AcerGaming SetGamingFanSpeed ([uint64]$fan -bor ([uint64]$pct -shl 8))
-    if ($r -band 0xFF) { throw ('SetGamingFanSpeed failed, status 0x{0:X2}' -f ($r -band 0xFF)) }
-}
-function Get-Sensor([int]$id) {
-    $r = Invoke-AcerGaming GetGamingSysInfo (0x1 -bor ([uint64]$id -shl 8))
-    if ($r -band 0xFF) { return $null }
-    ($r -shr 8) -band 0xFFFF
-}
-function Get-Status {
-    [pscustomobject]@{
-        CpuTemp = Get-Sensor 0x01; GpuTemp = Get-Sensor 0x0A
-        CpuRpm  = Get-Sensor 0x02; GpuRpm  = Get-Sensor 0x06
-    }
-}
-
 switch ($Mode) {
     'status' { Get-Status | Format-List }
     'auto'   { Set-Behavior $AUTO; 'Fans on auto.' }

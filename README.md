@@ -20,7 +20,14 @@ which uses the same interface:
 Every output has a status in the low byte; 0 means success. The PT315 is older than the models the
 Linux driver lists, so `probe.ps1` checks what this BIOS actually supports before anything is set.
 
-## Use (elevated PowerShell)
+## App
+
+Double-click `FanControl.cmd` (it asks for admin). The window shows live temps and RPM and has
+four modes: Auto, Max, Custom (CPU and GPU sliders) and Curve (`tempC:fan%` points, applied every
+2 seconds). Minimizing hides it to the tray; closing it returns the fans to auto, so leave it in
+the tray while using Curve or Custom.
+
+## Scripts (elevated PowerShell)
 
 ```powershell
 .\probe.ps1 | Tee-Object probe.txt   # read-only, run first
