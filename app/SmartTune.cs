@@ -49,7 +49,9 @@ namespace ReaSense
     // then picks the level past which more fan buys little cooling, and builds a gentle curve around it.
     public class SmartTune
     {
-        public static readonly int[] Levels = { 40, 55, 70, 85, 100 };
+        // Starts at full speed and steps down, so it ends at the level the laptop can't hold below LimitTemp.
+        public static readonly int[] Levels = { 100, 85, 70, 55, 40 };
+        public const int LimitTemp = 95;                    // i7-10750H Tjmax is 100°C; 5° margin for sensor lag
         public const int MinHoldS = 120, MaxHoldS = 240;   // per level: 10-20 minutes in all
         // A step up is worth its noise if it cools the hotter chip by at least this much per 1000 rpm added (both fans).
         public const double WorthDegPer1000Rpm = 2.0;
@@ -63,6 +65,7 @@ namespace ReaSense
         int _i;
 
         public bool Done => _i >= Levels.Length;
+        public void StopDescending() { _samples.Clear(); _i = Levels.Length; }   // current level ran too hot: not recorded
         public int Level => Levels[Math.Min(_i, Levels.Length - 1)];
         public int Step => _i + 1;
         public double HeldSeconds => _samples.Count < 2 ? 0 : (_samples[_samples.Count - 1].T - _samples[0].T).TotalSeconds;
@@ -101,8 +104,9 @@ namespace ReaSense
 
         // Curve that holds the sweet-spot fan speed at the temperature it settled at, eases in below it,
         // and climbs to 100% above it no faster than MaxSlope.
-        public static string BuildCurve(IList<Result> r, out string summary)
+        public static string BuildCurve(IList<Result> results, out string summary)
         {
+            var r = results.OrderBy(x => x.Pct).ToList();
             int k = SweetSpot(r);
             int p = r[k].Pct, t = (int)Math.Round(Math.Min(85, Math.Max(55, r[k].Hot)));
             int lowPct = 25, midPct = (lowPct + p) / 2;

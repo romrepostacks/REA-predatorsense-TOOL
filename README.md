@@ -25,10 +25,9 @@ Linux driver lists, so `probe.ps1` checks what this BIOS actually supports befor
 `app/` is a WPF app built by CI into a single `ReaSense.exe` (download the ReaSense artifact from
 the latest Actions run). It has fan modes and curves, keyboard lighting, GPU presets and settings, and adds:
 
-- **Smart Tune** (Fans page): run a game, plug in, and start it. Both fans step through
-  40/55/70/85/100%, holding each until temperatures settle, then it picks the speed past which more
-  rpm buys under 2°C per 1000 rpm and builds a curve around it (no steeper than 3% per °C). It stops at
-  92°C, and nothing changes until you click *Use this curve*.
+- **Smart Tune** (Fans page): run a game, plug in, and start it. Both fans start at 100% and step
+  down through 85/70/55/40%, holding each until temperatures settle (stopping the descent at 95°C), then it picks the speed past which more
+  rpm buys under 2°C per 1000 rpm and builds a curve around it (no steeper than 3% per °C). Nothing changes until you click *Use this curve*.
 - **Fan log**: every 2 s reading (temps, fan %, rpm, mode) goes to `%APPDATA%\ReaSense\fanlog.csv`.
 
 ## PowerShell app
