@@ -103,8 +103,8 @@ namespace ReaSense
             var pts = FanCurve.Parse(BuildCurve(r, out _));
             if (FanCurve.Interpolate(pts, 77) != 70) throw new Exception("curve should hold 70% at 77°C");
             for (int i = 1; i < pts.Length; i++)
-                if ((pts[i].Percent - pts[i - 1].Percent) / (pts[i].Temp - pts[i - 1].Temp) > MaxSlope + 0.01)
-                    throw new Exception("curve too steep at " + pts[i].Temp);
+                if ((pts[i].Item2 - pts[i - 1].Item2) / (pts[i].Item1 - pts[i - 1].Item1) > MaxSlope + 0.01)
+                    throw new Exception("curve too steep at " + pts[i].Item1);
 
             var tune = new SmartTune(); var t0 = DateTime.Now;
             for (int s = 0; s <= MaxHoldS; s += 2) tune.Add(t0.AddSeconds(s), 70, 60, 3000, 3000);
