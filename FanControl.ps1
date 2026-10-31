@@ -7,8 +7,12 @@ Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 $PanicTemp = 92   # Custom and Curve force 100% at or above this
 $script:Mode = 'Auto'
 $script:Points = $null
-$StepDown = 5     # Curve lowers a fan at most this many % per 2 s tick, so short dips don't make it surge
+# Curve smoothing, to stop surging on short CPU spikes. Per 2 s tick:
+$Smooth = 0.25    # weight of the newest reading in the averaged temperature (about 8 s to settle)
+$StepUp = 10      # most a fan rises, in %
+$StepDown = 3     # most a fan falls, in %
 $script:Last = @{ Cpu = 100; Gpu = 100 }
+$script:Avg = @{ Cpu = $null; Gpu = $null }
 
 $form = New-Object Windows.Forms.Form -Property @{
     Text = 'Triton 300 Fan Control'; ClientSize = '360,330'; FormBorderStyle = 'FixedSingle'; MaximizeBox = $false
@@ -41,7 +45,7 @@ $cpuSlider = New-Slider 'CPU' 105
 $gpuSlider = New-Slider 'GPU' 150
 
 Add-Control (New-Object Windows.Forms.Label -Property @{ Text = 'Curve (tempC:fan%)'; Location = '15,205'; Size = '330,20' }) | Out-Null
-$txtCurve = Add-Control (New-Object Windows.Forms.TextBox -Property @{ Text = '45:25,55:35,62:50,68:65,72:80,78:100'; Location = '15,228'; Size = '250,25' })
+$txtCurve = Add-Control (New-Object Windows.Forms.TextBox -Property @{ Text = '50:25,60:35,68:50,75:65,80:85,85:100'; Location = '15,228'; Size = '250,25' })
 $btnCurve = Add-Control (New-Object Windows.Forms.Button -Property @{ Text = 'Apply'; Location = '272,226'; Size = '73,29' })
 $btnCurve.Add_Click({ $modes['Curve'].Checked = $true; Set-Mode 'Curve' })
 
@@ -69,6 +73,16 @@ function Stop-Manual([string]$why) {
     $lblMsg.Text = "$why  Switched to Auto."
 }
 
+# Follows the curve on an averaged temperature, moving the fan only a few % per tick.
+function Get-SmoothFan([string]$k, [double]$temp) {
+    $a = $script:Avg[$k]
+    $a = if ($null -eq $a) { $temp } else { $a + $Smooth * ($temp - $a) }
+    $script:Avg[$k] = $a
+    $target = Get-CurvePercent $a $script:Points
+    $last = $script:Last[$k]
+    [int][math]::Min([math]::Max($target, $last - $StepDown), $last + $StepUp)
+}
+
 function Update-Fans {
     $s = Get-Status
     $lblCpu.Text = "CPU  $($s.CpuTemp) C   $($s.CpuRpm) rpm"
@@ -78,9 +92,7 @@ function Update-Fans {
     # No temperature means flying blind.
     if ($null -eq $s.CpuTemp -or $null -eq $s.GpuTemp) { Stop-Manual 'Lost temperature reading.'; return }
     if ($script:Points) {
-        # Up at once, down slowly.
-        $c = [math]::Max((Get-CurvePercent $s.CpuTemp $script:Points), $script:Last.Cpu - $StepDown)
-        $g = [math]::Max((Get-CurvePercent $s.GpuTemp $script:Points), $script:Last.Gpu - $StepDown)
+        $c = Get-SmoothFan 'Cpu' $s.CpuTemp; $g = Get-SmoothFan 'Gpu' $s.GpuTemp
     } else {
         $c = $cpuSlider.Value; $g = $gpuSlider.Value
     }
