@@ -69,6 +69,29 @@ function Set-GpuOc([int]$level) {
     }
 }
 
+# Keyboard lighting, 4 zones left to right. Layouts from the acer-predator-turbo-and-rgb-keyboard
+# Linux module: SetGamingKBBacklight takes 16 bytes [mode, speed, brightness, wave flag, direction,
+# R, G, B, 0, 1, ...]; SetGamingRgbKb takes zone bit | R<<8 | G<<16 | B<<24 for static colors.
+$KbEffects = [ordered]@{ Static = 0; Breath = 1; Neon = 2; Wave = 3; Shifting = 4; Zoom = 5 }
+function Set-KbLighting([int]$Mode, [int]$Brightness, [int]$Speed, [int[][]]$Colors) {
+    if ($Mode -eq 0) {
+        for ($z = 0; $z -lt 4; $z++) {
+            $c = $Colors[$z]
+            $r = Invoke-AcerGaming SetGamingRgbKb ([uint64](1 -shl $z) -bor ([uint64]$c[0] -shl 8) -bor ([uint64]$c[1] -shl 16) -bor ([uint64]$c[2] -shl 24))
+            if ($r -band 0xFF) { throw ('SetGamingRgbKb failed, status 0x{0:X2}' -f ($r -band 0xFF)) }
+        }
+    }
+    $b = [byte[]]::new(16)
+    $b[0] = $Mode; $b[2] = $Brightness; $b[9] = 1
+    if ($Mode -ne 0) {
+        $b[1] = $Speed; $b[4] = 1   # direction: right to left
+        if ($Mode -eq 3) { $b[3] = 8 }
+        $b[5] = $Colors[0][0]; $b[6] = $Colors[0][1]; $b[7] = $Colors[0][2]
+    }
+    $r = Invoke-CimMethod -InputObject (Get-AcerGaming) -MethodName SetGamingKBBacklight -Arguments @{ gmInput = $b }
+    if ($r.gmOutput -band 0xFF) { throw ('SetGamingKBBacklight failed, status 0x{0:X2}' -f ($r.gmOutput -band 0xFF)) }
+}
+
 # Piecewise-linear fan curve. $Points: sorted list of @(tempC, percent).
 function Get-CurvePercent([double]$Temp, $Points) {
     if ($Temp -le $Points[0][0]) { return [int]$Points[0][1] }
@@ -96,7 +119,7 @@ $TestedModels = @('Predator PT315-52')
 
 # Read-only check of what this laptop supports. Makes only Get calls.
 function Test-AcerSupport {
-    $r = [ordered]@{ Model = (Get-CimInstance Win32_ComputerSystem).Model; Tested = $false; Wmi = $false; Sensors = $false; Fans = $false; GpuOc = $false }
+    $r = [ordered]@{ Model = (Get-CimInstance Win32_ComputerSystem).Model; Tested = $false; Wmi = $false; Sensors = $false; Fans = $false; GpuOc = $false; Keyboard = $false }
     $r.Tested = $r.Model -in $TestedModels
     try { $m = (Get-AcerGaming).CimClass.CimClassMethods; $r.Wmi = $true } catch { return [pscustomobject]$r }
     try { $r.Sensors = $null -ne (Get-Sensor 0x01) -and $null -ne (Get-Sensor 0x0A) } catch {}
@@ -105,5 +128,9 @@ function Test-AcerSupport {
             -not ((Invoke-AcerGaming GetGamingFanBehavior 0x9) -band 0xFF)
     } catch {}
     try { $r.GpuOc = $null -ne (Get-GpuOc) } catch {}
+    try {
+        $r.Keyboard = $m['SetGamingKBBacklight'] -and $m['SetGamingRgbKb'] -and
+            (Invoke-CimMethod -InputObject (Get-AcerGaming) -MethodName GetGamingKBBacklight).gmReturn -eq 0
+    } catch {}
     [pscustomobject]$r
 }

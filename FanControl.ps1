@@ -19,7 +19,8 @@ $script:Avg = @{ Cpu = $null; Gpu = $null }
 $Self = $PSCommandPath
 $TaskName = 'PredatorFanControl'
 $CfgPath = Join-Path $env:APPDATA 'PredatorFanControl\settings.json'
-$script:Cfg = [pscustomobject]@{ Mode = 'Auto'; Curve = '45:25,55:35,63:50,70:65,75:85,80:100'; Cpu = 60; Gpu = 60; AllowUntested = $false }
+$script:Cfg = [pscustomobject]@{ Mode = 'Auto'; Curve = '45:25,55:35,63:50,70:65,75:85,80:100'; Cpu = 60; Gpu = 60; AllowUntested = $false
+    Kb = [pscustomobject]@{ Effect = 'Static'; Brightness = 100; Speed = 4; Colors = @('#00AEC7', '#00AEC7', '#00AEC7', '#00AEC7') } }
 if (Test-Path $CfgPath) {
     try { (Get-Content $CfgPath -Raw | ConvertFrom-Json).psobject.Properties | ForEach-Object { $script:Cfg.($_.Name) = $_.Value } } catch {}
 }
@@ -71,6 +72,8 @@ $btnSettings.Add_Click({ Show-Settings })
 
 Add-Control (New-Object Windows.Forms.Label -Property @{ Text = 'GPU overclock'; Location = '15,330'; Size = '110,22' }) | Out-Null
 $cmbOc = Add-Control (New-Object Windows.Forms.ComboBox -Property @{ Location = '130,327'; Size = '135,25'; DropDownStyle = 'DropDownList' })
+$btnKb = Add-Control (New-Object Windows.Forms.Button -Property @{ Text = 'Keyboard'; Location = '272,325'; Size = '73,29'; Enabled = $false })
+$btnKb.Add_Click({ Show-Keyboard })
 $cmbOc.Items.AddRange([object[]]$GpuOcLevels.Keys)
 $cmbOc.Enabled = $false
 # Only user picks write; the initial read below sets the box without writing.
@@ -155,6 +158,7 @@ function Update-Allowed {
     foreach ($m in 'Max', 'Custom', 'Curve') { $modes[$m].Enabled = $ok }
     $btnCurve.Enabled = $ok
     $cmbOc.Enabled = $ok -and $Support.GpuOc
+    $btnKb.Enabled = $ok -and $Support.Keyboard
     $ok
 }
 
@@ -174,7 +178,8 @@ function Show-Settings {
         "Acer gaming WMI: $(& $yn $Support.Wmi)",
         "Temperature sensors: $(& $yn $Support.Sensors)",
         "Fan control commands: $(& $yn $Support.Fans)",
-        "GPU overclock presets: $(& $yn $Support.GpuOc)") -join "`n" }
+        "GPU overclock presets: $(& $yn $Support.GpuOc)",
+        "Keyboard lighting: $(& $yn $Support.Keyboard)") -join "`n" }
     $ok = New-Object Windows.Forms.Button -Property @{ Text = 'OK'; Location = '272,210'; Size = '73,29'; DialogResult = 'OK' }
     $dlg.Controls.AddRange(@($chkStart, $chkUntested, $lbl, $ok))
     $dlg.AcceptButton = $ok
@@ -183,6 +188,45 @@ function Show-Settings {
     $script:Cfg.AllowUntested = $chkUntested.Checked
     Save-Cfg
     Update-Allowed | Out-Null
+}
+
+function Show-Keyboard {
+    $kb = $script:Cfg.Kb
+    $dlg = New-Object Windows.Forms.Form -Property @{
+        Text = 'Keyboard lighting'; ClientSize = '360,250'; FormBorderStyle = 'FixedDialog'; MaximizeBox = $false; MinimizeBox = $false
+        StartPosition = 'CenterParent'; Font = $form.Font }
+    $dlg.Controls.Add((New-Object Windows.Forms.Label -Property @{ Text = 'Zone colors (left to right; effects use zone 1)'; Location = '15,12'; Size = '330,20' }))
+    $zones = for ($z = 0; $z -lt 4; $z++) {
+        $btn = New-Object Windows.Forms.Button -Property @{ Location = "$(15 + 85 * $z),36"; Size = '75,30'; FlatStyle = 'Flat'
+            BackColor = [Drawing.ColorTranslator]::FromHtml($kb.Colors[$z]) }
+        $btn.Add_Click({
+            $cd = New-Object Windows.Forms.ColorDialog -Property @{ Color = $this.BackColor; FullOpen = $true }
+            if ($cd.ShowDialog() -eq 'OK') { $this.BackColor = $cd.Color }
+        })
+        $dlg.Controls.Add($btn); $btn
+    }
+    $dlg.Controls.Add((New-Object Windows.Forms.Label -Property @{ Text = 'Effect'; Location = '15,85'; Size = '80,22' }))
+    $cmbFx = New-Object Windows.Forms.ComboBox -Property @{ Location = '100,82'; Size = '150,25'; DropDownStyle = 'DropDownList' }
+    $cmbFx.Items.AddRange([object[]]$KbEffects.Keys); $cmbFx.SelectedItem = $kb.Effect
+    $dlg.Controls.Add((New-Object Windows.Forms.Label -Property @{ Text = 'Brightness'; Location = '15,125'; Size = '80,22' }))
+    $tbBright = New-Object Windows.Forms.TrackBar -Property @{ Location = '100,118'; Size = '245,45'; Maximum = 100; TickFrequency = 10; LargeChange = 10 }
+    $tbBright.Value = $kb.Brightness
+    $dlg.Controls.Add((New-Object Windows.Forms.Label -Property @{ Text = 'Speed'; Location = '15,170'; Size = '80,22' }))
+    $tbSpeed = New-Object Windows.Forms.TrackBar -Property @{ Location = '100,163'; Size = '245,45'; Minimum = 1; Maximum = 9 }
+    $tbSpeed.Value = $kb.Speed
+    $apply = New-Object Windows.Forms.Button -Property @{ Text = 'Apply'; Location = '272,212'; Size = '73,29' }
+    $lblKb = New-Object Windows.Forms.Label -Property @{ Location = '15,217'; Size = '250,22'; ForeColor = 'DimGray' }
+    $apply.Add_Click({
+        $kb.Effect = $cmbFx.SelectedItem; $kb.Brightness = $tbBright.Value; $kb.Speed = $tbSpeed.Value
+        $kb.Colors = @($zones | ForEach-Object { [Drawing.ColorTranslator]::ToHtml($_.BackColor) })
+        try {
+            Set-KbLighting $KbEffects[$kb.Effect] $kb.Brightness $kb.Speed @($zones | ForEach-Object { , @([int]$_.BackColor.R, [int]$_.BackColor.G, [int]$_.BackColor.B) })
+            $lblKb.Text = 'Applied.'
+            Save-Cfg
+        } catch { $lblKb.Text = "Failed: $($_.Exception.Message)" }
+    })
+    $dlg.Controls.AddRange(@($cmbFx, $tbBright, $tbSpeed, $apply, $lblKb))
+    $dlg.ShowDialog($form) | Out-Null
 }
 
 $tray = New-Object Windows.Forms.NotifyIcon -Property @{

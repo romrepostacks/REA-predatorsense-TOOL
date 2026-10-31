@@ -35,6 +35,11 @@ curve and sliders in `%APPDATA%\PredatorFanControl\settings.json`.
 **GPU overclock** sets the Normal / Turbo GPU presets (misc settings 5 and 7, as the Linux driver
 does). Closing the app sets it back to Normal. If games crash, go back to Normal.
 
+**Keyboard** sets the 4-zone RGB lighting: a color per zone (Static) or an effect (Breath, Neon,
+Wave, Shifting, Zoom) with brightness and speed. Byte layouts come from the
+[acer-predator-turbo-and-rgb-keyboard](https://github.com/JafarAkhondali/acer-predator-turbo-and-rgb-keyboard-linux-module)
+Linux module.
+
 **Other models:** at start the app makes read-only calls to check for Acer gaming WMI, temperature
 sensors and the fan commands. Fan modes are only enabled on models confirmed to work (currently
 PT315-52); on others they stay off unless you tick *Allow fan control on this untested model*.
