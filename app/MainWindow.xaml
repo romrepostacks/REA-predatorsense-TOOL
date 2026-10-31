@@ -2,7 +2,11 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="REA Sense" Width="1000" Height="680" WindowStartupLocation="CenterScreen"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="CanMinimize">
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="CanResize" MinWidth="820" MinHeight="560">
+    <!-- Borderless but resizable from the edges -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"/>
+    </WindowChrome.WindowChrome>
     <Window.Resources>
         <!-- Effect gallery tile -->
         <Style x:Key="EffectTile" TargetType="RadioButton">
@@ -45,8 +49,16 @@
                     <TextBlock x:Name="ModelText" Foreground="{StaticResource Muted}" Margin="12,0,0,0" FontSize="13"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,8,0">
-                    <Button Content="&#xE921;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource TitleButton}" Click="Minimize_Click" ToolTip="Hide to tray"/>
-                    <Button Content="&#xE8BB;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource TitleButton}" Click="Close_Click" ToolTip="Quit (fans return to auto)"/>
+                    <!-- Icons are drawn, so they don't depend on an icon font being installed -->
+                    <Button Style="{StaticResource TitleButton}" Click="Minimize_Click" ToolTip="Hide to tray">
+                        <Path Data="M0,5 H10" Stroke="{StaticResource Text}" StrokeThickness="1.2" Width="10" Height="10"/>
+                    </Button>
+                    <Button Style="{StaticResource TitleButton}" Click="Maximize_Click" ToolTip="Maximize">
+                        <Path x:Name="MaxIcon" Data="M0.5,0.5 H9.5 V9.5 H0.5 Z" Stroke="{StaticResource Text}" StrokeThickness="1.2" Width="10" Height="10"/>
+                    </Button>
+                    <Button Style="{StaticResource TitleButton}" Click="Close_Click" ToolTip="Quit (fans return to auto)">
+                        <Path Data="M0,0 L10,10 M10,0 L0,10" Stroke="{StaticResource Text}" StrokeThickness="1.2" Width="10" Height="10"/>
+                    </Button>
                 </StackPanel>
             </Grid>
 

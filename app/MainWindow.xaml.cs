@@ -467,7 +467,35 @@ namespace ReaSense
             if (NavLighting.IsChecked == true) Preview_Changed(null, null);
         }
 
-        void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e) => DragMove();
+        void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2) { Maximize_Click(sender, e); return; }
+            if (WindowState == WindowState.Maximized)
+            {
+                // Dragging a maximized window restores it under the cursor, like Windows does.
+                var p = PointToScreen(e.GetPosition(this));
+                var frac = e.GetPosition(this).X / ActualWidth;
+                WindowState = WindowState.Normal;
+                Left = p.X - RestoreBounds.Width * frac; Top = p.Y - 20;
+            }
+            DragMove();
+        }
+
+        void Maximize_Click(object sender, RoutedEventArgs e)
+        {
+            // With AllowsTransparency, maximizing would cover the taskbar; cap it to the work area.
+            MaxHeight = SystemParameters.WorkArea.Height + 12;
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        }
+
+        protected override void OnStateChanged(EventArgs e)
+        {
+            base.OnStateChanged(e);
+            if (MaxIcon == null) return;
+            MaxIcon.Data = Geometry.Parse(WindowState == WindowState.Maximized
+                ? "M2.5,0.5 H9.5 V7.5 M0.5,2.5 H7.5 V9.5 H0.5 Z"     // restore: two overlapping squares
+                : "M0.5,0.5 H9.5 V9.5 H0.5 Z");
+        }
         void Minimize_Click(object sender, RoutedEventArgs e) => Hide();
         void Close_Click(object sender, RoutedEventArgs e) => Quit();
 
