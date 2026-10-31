@@ -1,4 +1,4 @@
-# REA PredatorSense tool
+# TalonForge
 
 Fan control for the Acer Predator Triton 300 (PT315) on Windows 11, without PredatorSense.
 
@@ -20,15 +20,15 @@ which uses the same interface:
 Every output has a status in the low byte; 0 means success. The PT315 is older than the models the
 Linux driver lists, so `probe.ps1` checks what this BIOS actually supports before anything is set.
 
-## REA Sense (portable app)
+## TalonForge (portable app)
 
-`app/` is a WPF app built by CI into a single `ReaSense.exe` (download the ReaSense artifact from
+`app/` is a WPF app built by CI into a single `TalonForge.exe` (download the TalonForge artifact from
 the latest Actions run). It has fan modes and curves, keyboard lighting, GPU presets and settings, and adds:
 
 - **Smart Tune** (Fans page): run a game, plug in, and start it. Both fans start at 100% and step
   down through 85/70/55/40%, holding each until temperatures settle (stopping the descent at 98°C), then it picks the speed past which more
   rpm buys under 2°C per 1000 rpm and builds a curve around it (no steeper than 3% per °C). Nothing changes until you click *Use this curve*.
-- **Fan log**: every 2 s reading (temps, fan %, rpm, mode) goes to `%APPDATA%\ReaSense\fanlog.csv`.
+- **Fan log**: every 2 s reading (temps, fan %, rpm, mode) goes to `%APPDATA%\TalonForge\fanlog.csv`.
 
 ## PowerShell app
 

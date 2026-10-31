@@ -11,14 +11,14 @@ using System.Windows.Threading;
 using Microsoft.Win32;
 using WinForms = System.Windows.Forms;
 
-namespace ReaSense
+namespace TalonForge
 {
     public partial class MainWindow : Window
     {
         const int PanicTemp = 92;            // Custom and Curve force 100% when the ~10 s average reaches this
         const int HardTemp = 98;             // ...or when a single reading reaches this
         double? PanicAvgC, PanicAvgG;        // turbo bursts swing single readings by 15°C+, so the 92°C override uses an average
-        const string TaskName = "ReaSense";
+        const string TaskName = "TalonForge";
 
         readonly Settings S;
         readonly Support Sup;
@@ -76,6 +76,13 @@ namespace ReaSense
             ModeAuto.IsChecked = true;
             if (Allowed && S.FanMode != "Auto") RadioFor(S.FanMode).IsChecked = true;
             if (Sup.GpuOc && Acer.GetGpuOc() is int oc) new[] { OcNormal, OcFaster, OcTurbo }.ElementAtOrDefault(oc)?.SetValue(RadioButton.IsCheckedProperty, true);
+            // Renamed from "ReaSense": move its Start with Windows task to the new name and this exe.
+            if (RunSchtasks("/Query /TN ReaSense") == 0)
+            {
+                var exe = Process.GetCurrentProcess().MainModule.FileName;
+                if (RunSchtasks($"/Create /F /RL HIGHEST /SC ONLOGON /TN {TaskName} /TR \"\\\"{exe}\\\" --minimized\"") == 0)
+                    RunSchtasks("/Delete /F /TN ReaSense");
+            }
             RefreshSettingsPage();
             Loading = false;
 

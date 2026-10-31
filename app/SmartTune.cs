@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-namespace ReaSense
+namespace TalonForge
 {
     // CPU and GPU usage, read once per fan tick with Refresh(). Null when unavailable.
     // CPU from Windows performance counters; GPU from nvidia-smi (ships with the NVIDIA driver), because
@@ -55,12 +55,12 @@ namespace ReaSense
         }
     }
 
-    // Appends one line per fan tick to %APPDATA%\ReaSense\fanlog.csv (opens in Excel),
+    // Appends one line per fan tick to %APPDATA%\TalonForge\fanlog.csv (opens in Excel),
     // and to a separate monitor-*.csv in the logs folder while the user has logging switched on.
     public static class FanLog
     {
         public static readonly string Dir = System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ReaSense");
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TalonForge");
         public static readonly string Path = System.IO.Path.Combine(Dir, "fanlog.csv");
         public static readonly string LogsDir = System.IO.Path.Combine(Dir, "logs");
         const long MaxBytes = 5_000_000;   // about 2 days at 2 s ticks; the previous file is kept as fanlog.old.csv

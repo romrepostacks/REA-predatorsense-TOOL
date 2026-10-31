@@ -17,13 +17,13 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - name: Build
-        run: dotnet build app/ReaSense.csproj -c Release
+        run: dotnet build app/TalonForge.csproj -c Release
       - name: Self-test
         shell: pwsh
         run: |
-          $p = Start-Process app/bin/Release/net48/ReaSense.exe -ArgumentList '--selftest' -Wait -PassThru
+          $p = Start-Process app/bin/Release/net48/TalonForge.exe -ArgumentList '--selftest' -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "self-test failed ($($p.ExitCode))" }
       - uses: actions/upload-artifact@v4
         with:
-          name: ReaSense
-          path: app/bin/Release/net48/ReaSense.exe
+          name: TalonForge
+          path: app/bin/Release/net48/TalonForge.exe

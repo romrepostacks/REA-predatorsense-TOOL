@@ -3,7 +3,7 @@ using System.Linq;
 using System.Management;
 using System.Windows.Media;
 
-namespace ReaSense
+namespace TalonForge
 {
     public enum FanMode { Auto = 1, Max = 2, Custom = 3 }
 

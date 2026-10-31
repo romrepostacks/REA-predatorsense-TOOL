@@ -3,7 +3,7 @@ using System.Linq;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace ReaSense
+namespace TalonForge
 {
     public class Effect
     {

@@ -3,9 +3,9 @@ using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 
-namespace ReaSense
+namespace TalonForge
 {
-    // Stored as JSON in %APPDATA%\ReaSense\settings.json.
+    // Stored as JSON in %APPDATA%\TalonForge\settings.json.
     [DataContract]
     public class Settings
     {
@@ -34,7 +34,7 @@ namespace ReaSense
             ZoneColors = new[] { "#00AEC7", "#00AEC7", "#00AEC7", "#00AEC7" };
         }
 
-        static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ReaSense", "settings.json");
+        static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TalonForge", "settings.json");
         static readonly DataContractJsonSerializer Json = new DataContractJsonSerializer(typeof(Settings));
 
         public static Settings Load()

@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 
-namespace ReaSense
+namespace TalonForge
 {
     public partial class DisclaimerWindow : Window
     {

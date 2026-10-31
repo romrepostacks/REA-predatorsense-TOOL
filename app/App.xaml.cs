@@ -2,11 +2,11 @@ using System;
 using System.Linq;
 using System.Windows;
 
-namespace ReaSense
+namespace TalonForge
 {
     public partial class App : Application
     {
-        public const string AppName = "REA Sense";
+        public const string AppName = "TalonForge";
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -17,6 +17,15 @@ namespace ReaSense
                 catch (Exception ex) { Console.Error.WriteLine(ex.Message); Shutdown(1); }
                 return;
             }
+
+            // Renamed from "ReaSense": carry the old settings and logs over once.
+            try
+            {
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                string oldDir = System.IO.Path.Combine(appData, "ReaSense"), newDir = System.IO.Path.Combine(appData, "TalonForge");
+                if (System.IO.Directory.Exists(oldDir) && !System.IO.Directory.Exists(newDir)) System.IO.Directory.Move(oldDir, newDir);
+            }
+            catch { }
 
             var settings = Settings.Load();
             if (!settings.HideDisclaimer)

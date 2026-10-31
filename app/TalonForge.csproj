@@ -5,8 +5,8 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>ReaSense</AssemblyName>
-    <RootNamespace>ReaSense</RootNamespace>
+    <AssemblyName>TalonForge</AssemblyName>
+    <RootNamespace>TalonForge</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Version>0.1.0</Version>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

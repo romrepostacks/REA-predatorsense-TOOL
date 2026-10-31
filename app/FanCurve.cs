@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace ReaSense
+namespace TalonForge
 {
     // Temperature -> fan % curve with smoothing, so short CPU spikes don't make the fans surge.
     public class FanCurve
@@ -54,7 +54,7 @@ namespace ReaSense
             return _last;
         }
 
-        // Run with "ReaSense.exe --selftest"; exits non-zero on failure.
+        // Run with "TalonForge.exe --selftest"; exits non-zero on failure.
         public static void SelfTest()
         {
             var p = Parse("70:60,50:30,80:80");
