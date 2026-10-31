@@ -69,10 +69,12 @@ function Set-GpuOc([int]$level) {
     }
 }
 
-# Keyboard lighting, 4 zones left to right. Layouts from the acer-predator-turbo-and-rgb-keyboard
-# Linux module: SetGamingKBBacklight takes 16 bytes [mode, speed, brightness, wave flag, direction,
-# R, G, B, 0, 1, ...]; SetGamingRgbKb takes zone bit | R<<8 | G<<16 | B<<24 for static colors.
-$KbEffects = [ordered]@{ Static = 0; Breath = 1; Neon = 2; Wave = 3; Shifting = 4; Zoom = 5 }
+# Keyboard lighting, 4 zones left to right. SetGamingKBBacklight takes 16 bytes [mode, speed,
+# brightness, wave flag, direction, R, G, B] with bytes 8-15 repeating 0-7 (Meteor/Twinkling put 3
+# in byte 8) and byte 9 = 1; direction only for Wave/Shifting/Zoom. Layout as used by the MIT
+# Predator-Control-App and the acer-predator-turbo-and-rgb-keyboard Linux module.
+# SetGamingRgbKb takes zone bit | R<<8 | G<<16 | B<<24 for static colors.
+$KbEffects = [ordered]@{ Static = 0; Breath = 1; Neon = 2; Wave = 3; Shifting = 4; Zoom = 5; Meteor = 6; Twinkling = 7 }
 function Set-KbLighting([int]$Mode, [int]$Brightness, [int]$Speed, [int[][]]$Colors) {
     if ($Mode -eq 0) {
         for ($z = 0; $z -lt 4; $z++) {
@@ -84,10 +86,13 @@ function Set-KbLighting([int]$Mode, [int]$Brightness, [int]$Speed, [int[][]]$Col
     $b = [byte[]]::new(16)
     $b[0] = $Mode; $b[2] = $Brightness; $b[9] = 1
     if ($Mode -ne 0) {
-        $b[1] = $Speed; $b[4] = 1   # direction: right to left
+        $b[1] = [math]::Min([math]::Max($Speed, 1), 9)
         if ($Mode -eq 3) { $b[3] = 8 }
+        if ($Mode -in 3, 4, 5) { $b[4] = 1 }   # direction: right to left
         $b[5] = $Colors[0][0]; $b[6] = $Colors[0][1]; $b[7] = $Colors[0][2]
     }
+    if ($Mode -in 6, 7) { $b[8] = 3 } else { [Array]::Copy($b, 0, $b, 8, 8) }
+    $b[9] = 1
     $r = Invoke-CimMethod -InputObject (Get-AcerGaming) -MethodName SetGamingKBBacklight -Arguments @{ gmInput = $b }
     if ($r.gmOutput -band 0xFF) { throw ('SetGamingKBBacklight failed, status 0x{0:X2}' -f ($r.gmOutput -band 0xFF)) }
 }
