@@ -19,7 +19,12 @@ namespace ReaSense
 
         public static bool HasMethod(string name)
         {
-            try { return Obj.Methods.Cast<MethodData>().Any(m => m.Name == name); } catch { return false; }
+            try
+            {
+                using (var cls = new ManagementClass(@"root\WMI", "AcerGamingFunction", null))
+                    return cls.Methods.Cast<MethodData>().Any(m => m.Name == name);
+            }
+            catch { return false; }
         }
 
         // One method call with an integer input (or none). Input width is read from the class.
