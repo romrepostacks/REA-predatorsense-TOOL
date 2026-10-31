@@ -1,0 +1,26 @@
+<Window x:Class="ReaSense.DisclaimerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="REA Sense" Width="520" SizeToContent="Height" WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize">
+    <Border Background="{StaticResource Panel}" CornerRadius="14" BorderBrush="{StaticResource Line}" BorderThickness="1" Padding="28">
+        <StackPanel>
+            <TextBlock Text="Before you start" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,14"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" LineHeight="20">
+                REA Sense is free, open-source software provided "as is", without warranty of any kind.
+                It is not made, endorsed or supported by Acer. Acer and Predator are trademarks of Acer Inc.
+                <LineBreak/><LineBreak/>
+                It talks directly to your laptop's firmware to change fan speeds, keyboard lighting and GPU
+                settings. Wrong settings can make your laptop run hot, become unstable or behave unexpectedly.
+                You use it at your own risk, and the authors are not liable for any damage or data loss.
+                <LineBreak/><LineBreak/>
+                Closing the app returns the fans to automatic control. A restart also resets them.
+            </TextBlock>
+            <CheckBox x:Name="ChkHide" Content="Don't show this again" Margin="0,18,0,0"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                <Button Content="Exit" Click="Exit_Click" Margin="0,0,8,0"/>
+                <Button Content="I understand" Style="{StaticResource Primary}" Click="Ok_Click" IsDefault="True"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>
