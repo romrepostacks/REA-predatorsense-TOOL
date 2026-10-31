@@ -1,3 +1,4 @@
 @echo off
 rem Starts the fan control window as administrator (WMI fan calls need it).
-powershell -NoProfile -Command "Start-Process pwsh -Verb RunAs -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-STA','-File','\"%~dp0FanControl.ps1\"'"
+rem pwsh hides its own console; Start-Process -WindowStyle Hidden would hide the form too.
+powershell -NoProfile -Command "Start-Process pwsh -Verb RunAs -ArgumentList '-WindowStyle','Hidden','-NoProfile','-ExecutionPolicy','Bypass','-STA','-File','\"%~dp0FanControl.ps1\"'"
