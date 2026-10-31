@@ -36,7 +36,7 @@ the tray while using Curve or Custom.
 .\fan.ps1                            # temps and RPM
 .\fan.ps1 max                        # then .\fan.ps1 auto
 .\fan.ps1 custom -Cpu 60 -Gpu 70
-.\fan.ps1 curve -Curve '50:30,65:50,75:70,85:100'   # Ctrl+C returns fans to auto
+.\fan.ps1 curve -Curve '45:25,55:35,62:50,68:65,72:80,78:100'   # Ctrl+C returns fans to auto
 ```
 
 The curve loop forces 100% above `-PanicTemp` (92C) and hands control back to auto if it exits or

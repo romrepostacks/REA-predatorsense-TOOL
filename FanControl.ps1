@@ -7,6 +7,8 @@ Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 $PanicTemp = 92   # Custom and Curve force 100% at or above this
 $script:Mode = 'Auto'
 $script:Points = $null
+$StepDown = 5     # Curve lowers a fan at most this many % per 2 s tick, so short dips don't make it surge
+$script:Last = @{ Cpu = 100; Gpu = 100 }
 
 $form = New-Object Windows.Forms.Form -Property @{
     Text = 'Triton 300 Fan Control'; ClientSize = '360,330'; FormBorderStyle = 'FixedSingle'; MaximizeBox = $false
@@ -39,7 +41,7 @@ $cpuSlider = New-Slider 'CPU' 105
 $gpuSlider = New-Slider 'GPU' 150
 
 Add-Control (New-Object Windows.Forms.Label -Property @{ Text = 'Curve (tempC:fan%)'; Location = '15,205'; Size = '330,20' }) | Out-Null
-$txtCurve = Add-Control (New-Object Windows.Forms.TextBox -Property @{ Text = '50:30,60:40,70:60,80:80,88:100'; Location = '15,228'; Size = '250,25' })
+$txtCurve = Add-Control (New-Object Windows.Forms.TextBox -Property @{ Text = '45:25,55:35,62:50,68:65,72:80,78:100'; Location = '15,228'; Size = '250,25' })
 $btnCurve = Add-Control (New-Object Windows.Forms.Button -Property @{ Text = 'Apply'; Location = '272,226'; Size = '73,29' })
 $btnCurve.Add_Click({ $modes['Curve'].Checked = $true; Set-Mode 'Curve' })
 
@@ -76,13 +78,16 @@ function Update-Fans {
     # No temperature means flying blind.
     if ($null -eq $s.CpuTemp -or $null -eq $s.GpuTemp) { Stop-Manual 'Lost temperature reading.'; return }
     if ($script:Points) {
-        $c = Get-CurvePercent $s.CpuTemp $script:Points; $g = Get-CurvePercent $s.GpuTemp $script:Points
+        # Up at once, down slowly.
+        $c = [math]::Max((Get-CurvePercent $s.CpuTemp $script:Points), $script:Last.Cpu - $StepDown)
+        $g = [math]::Max((Get-CurvePercent $s.GpuTemp $script:Points), $script:Last.Gpu - $StepDown)
     } else {
         $c = $cpuSlider.Value; $g = $gpuSlider.Value
     }
     if ($s.CpuTemp -ge $PanicTemp) { $c = 100 }
     if ($s.GpuTemp -ge $PanicTemp) { $g = 100 }
     Set-Speed $CPU_FAN $c; Set-Speed $GPU_FAN $g
+    $script:Last = @{ Cpu = $c; Gpu = $g }
     $lblMsg.Text = "Mode: $script:Mode   CPU fan $c%   GPU fan $g%"
 }
 

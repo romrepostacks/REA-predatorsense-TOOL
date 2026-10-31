@@ -8,7 +8,7 @@ param(
     [ValidateSet('status', 'auto', 'max', 'custom', 'curve')] [string]$Mode = 'status',
     [ValidateRange(0, 100)] [int]$Cpu = 50,
     [ValidateRange(0, 100)] [int]$Gpu = 50,
-    [string]$Curve = '50:30,60:40,70:60,80:80,88:100',
+    [string]$Curve = '45:25,55:35,62:50,68:65,72:80,78:100',
     [int]$Interval = 2,
     # Above this temperature the curve forces 100% whatever it says.
     [int]$PanicTemp = 92
