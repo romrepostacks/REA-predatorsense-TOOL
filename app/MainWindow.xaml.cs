@@ -15,7 +15,9 @@ namespace ReaSense
 {
     public partial class MainWindow : Window
     {
-        const int PanicTemp = 92;            // Custom and Curve force 100% at or above this
+        const int PanicTemp = 92;            // Custom and Curve force 100% when the ~10 s average reaches this
+        const int HardTemp = 98;             // ...or when a single reading reaches this
+        double? PanicAvgC, PanicAvgG;        // turbo bursts swing single readings by 15°C+, so the 92°C override uses an average
         const string TaskName = "ReaSense";
 
         readonly Settings S;
@@ -130,6 +132,9 @@ namespace ReaSense
         {
             if (!Sup.Sensors) return;
             int? ct = Temp(Acer.CpuTemp), gt = Temp(Acer.GpuTemp);
+            Usage.Refresh();
+            if (ct != null) PanicAvgC = PanicAvgC == null ? ct : PanicAvgC + 0.2 * (ct - PanicAvgC);
+            if (gt != null) PanicAvgG = PanicAvgG == null ? gt : PanicAvgG + 0.2 * (gt - PanicAvgG);
             int? cr = Acer.Sensor(Acer.CpuFanRpm), gr = Acer.Sensor(Acer.GpuFanRpm);
             if (ct != null) LastCpuTemp = ct.Value;
             CpuTemp.Text = ct != null ? $"{ct}°C" : "--°C";
@@ -154,15 +159,15 @@ namespace ReaSense
             int c, g;
             if (Mode == "Tune")
             {
-                Tune.Add(DateTime.Now, ct.Value, gt.Value, cr ?? 0, gr ?? 0);
+                Tune.Add(DateTime.Now, ct.Value, gt.Value, cr ?? 0, gr ?? 0, Usage.CpuSpeed ?? 0);
                 if (Tune.Done) { FinishTune(""); return; }
                 c = g = Tune.Level;
                 TuneMsg.Text = $"Step {Tune.Step} of {SmartTune.Levels.Length}: both fans at {Tune.Level}%, waiting for temperatures to settle ({Tune.HeldSeconds:0} s).";
             }
             else if (Mode == "Curve") { c = Cpu.Next(ct.Value); g = Gpu.Next(gt.Value); }
             else { c = (int)CpuSlider.Value; g = (int)GpuSlider.Value; }
-            if (Mode != "Tune" && ct >= PanicTemp) c = 100;   // Tune has its own limit above
-            if (Mode != "Tune" && gt >= PanicTemp) g = 100;
+            if (Mode != "Tune" && (PanicAvgC >= PanicTemp || ct >= HardTemp)) c = 100;   // Tune has its own limit above
+            if (Mode != "Tune" && (PanicAvgG >= PanicTemp || gt >= HardTemp)) g = 100;
             // Re-sent every tick: the firmware can drop custom speeds (after sleep, for example).
             Acer.SetFanSpeed(true, c);
             Acer.SetFanSpeed(false, g);
