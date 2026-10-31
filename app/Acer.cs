@@ -73,7 +73,8 @@ namespace ReaSense
             Check(Call("SetGamingFanSpeed", (cpu ? 1UL : 4UL) | (ulong)percent << 8), "SetGamingFanSpeed");
         }
 
-        // ---- GPU overclock presets: misc settings 5 and 7 (PredatorSense: Normal 0, Faster 1, Turbo 2) ----
+        // ---- GPU overclock presets: misc setting 5 (PredatorSense: Normal 0, Faster 1, Turbo 2). ----
+        // Misc setting 7 is the CPU overclock level in PredatorSense, so it is never written here.
         public static int? GetGpuOc()
         {
             var r = Call("GetGamingMiscSetting", 0x05);
@@ -82,8 +83,7 @@ namespace ReaSense
 
         public static void SetGpuOc(int level)
         {
-            foreach (ulong idx in new[] { 0x05UL, 0x07UL })
-                Check(Call("SetGamingMiscSetting", idx | (ulong)level << 8), "SetGamingMiscSetting");
+            Check(Call("SetGamingMiscSetting", 0x05UL | (ulong)level << 8), "SetGamingMiscSetting");
         }
 
         // ---- Keyboard, 4 zones left to right ----
@@ -93,21 +93,21 @@ namespace ReaSense
             Check(Call("SetGamingRgbKb", 1UL << zone | (ulong)c.R << 8 | (ulong)c.G << 16 | (ulong)c.B << 24), "SetGamingRgbKb");
         }
 
-        // Effect packet, 16 bytes: [mode, speed 1-9, brightness 0-100, wave flag, direction, R, G, B]
-        // (order and per-effect fields confirmed against PredatorSense 3.00);
-        // bytes 8-15 repeat 0-7 (Meteor/Twinkling put 3 in byte 8) and byte 9 is 1.
+        // Effect packet as PredatorSense 3.00 sends it to the 4-zone keyboard (10 bytes):
+        // [mode, speed 1-9, brightness 0-100, flag, direction, R, G, B, 3, 1]; Static is [0, 0, brightness, 0 ... 0, 1].
+        // Flag 8 marks Wave; direction (1 or 2) is used by Wave and Shifting only.
         public static byte[] EffectPacket(int mode, int speed, int brightness, int direction, Color c)
         {
-            var b = new byte[16];
-            b[0] = (byte)mode;
-            b[1] = (byte)(mode == 0 ? 0 : Math.Max(1, Math.Min(9, speed)));
+            var b = new byte[10];
             b[2] = (byte)Math.Max(0, Math.Min(100, brightness));
-            b[3] = (byte)(mode == 3 ? 8 : 0);
-            b[4] = (byte)(mode == 3 || mode == 4 ? direction : 0);          // Wave and Shifting only
-            if (mode != 0 && mode != 2 && mode != 3) { b[5] = c.R; b[6] = c.G; b[7] = c.B; }   // Neon and Wave pick their own colors
-            if (mode == 6 || mode == 7) b[8] = 3;
-            else Array.Copy(b, 0, b, 8, 8);
             b[9] = 1;
+            if (mode == 0) return b;
+            b[0] = (byte)mode;
+            b[1] = (byte)Math.Max(1, Math.Min(9, speed));
+            b[3] = (byte)(mode == 3 ? 8 : 0);
+            b[4] = (byte)(mode == 3 || mode == 4 ? direction : 0);
+            b[5] = c.R; b[6] = c.G; b[7] = c.B;
+            b[8] = 3;
             return b;
         }
 

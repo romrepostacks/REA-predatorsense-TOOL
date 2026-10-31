@@ -32,8 +32,8 @@ the tray while using Curve or Custom.
 in the tray in your last mode) and shows the compatibility check. The app remembers your last mode,
 curve and sliders in `%APPDATA%\PredatorFanControl\settings.json`.
 
-**GPU overclock** sets the Normal / Turbo GPU presets (misc settings 5 and 7, as the Linux driver
-does). Closing the app sets it back to Normal. If games crash, go back to Normal.
+**GPU overclock** sets the Normal / Turbo GPU presets (misc setting 5; misc setting 7 is the CPU
+overclock level in PredatorSense and is left alone). Closing the app sets it back to Normal. If games crash, go back to Normal.
 
 **Keyboard** sets the 4-zone RGB lighting: a color per zone (Static) or an effect (Breath, Neon,
 Wave, Shifting, Zoom) with brightness and speed. Byte layouts come from the

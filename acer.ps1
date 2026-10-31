@@ -54,8 +54,8 @@ function Get-Status {
     }
 }
 
-# GPU overclock preset. Misc settings 5 and 7 hold it (Linux acer-wmi sets both: 0 normal, 2 turbo).
-# PredatorSense's middle "Faster" level is left out until its value is confirmed.
+# GPU overclock preset in misc setting 5 (0 normal, 2 turbo). Misc setting 7 is PredatorSense's CPU
+# overclock level, so it is never written here. The middle "Faster" level (1) is left out.
 $GpuOcLevels = [ordered]@{ Normal = 0; Turbo = 2 }
 function Get-GpuOc {
     $r = Invoke-AcerGaming GetGamingMiscSetting 0x05
@@ -63,10 +63,8 @@ function Get-GpuOc {
     ($r -shr 8) -band 0xFF
 }
 function Set-GpuOc([int]$level) {
-    foreach ($idx in 0x05, 0x07) {
-        $r = Invoke-AcerGaming SetGamingMiscSetting ([uint64]$idx -bor ([uint64]$level -shl 8))
-        if ($r -band 0xFF) { throw ('SetGamingMiscSetting failed, status 0x{0:X2}' -f ($r -band 0xFF)) }
-    }
+    $r = Invoke-AcerGaming SetGamingMiscSetting (0x05 -bor ([uint64]$level -shl 8))
+    if ($r -band 0xFF) { throw ('SetGamingMiscSetting failed, status 0x{0:X2}' -f ($r -band 0xFF)) }
 }
 
 # Keyboard lighting, 4 zones left to right. SetGamingKBBacklight takes 16 bytes [mode, speed,
