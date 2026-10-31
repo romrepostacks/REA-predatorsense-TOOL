@@ -28,6 +28,14 @@ four modes: Auto, Max, Custom (CPU and GPU sliders) and Curve (`tempC:fan%` poin
 to Auto on any error. Minimizing hides it to the tray; closing it returns the fans to auto, so leave it in
 the tray while using Curve or Custom.
 
+**Settings** has *Start with Windows* (a logon task with admin rights, so no UAC prompt; it starts
+in the tray in your last mode) and shows the compatibility check. The app remembers your last mode,
+curve and sliders in `%APPDATA%\PredatorFanControl\settings.json`.
+
+**Other models:** at start the app makes read-only calls to check for Acer gaming WMI, temperature
+sensors and the fan commands. Fan modes are only enabled on models confirmed to work (currently
+PT315-52); on others they stay off unless you tick *Allow fan control on this untested model*.
+
 ## Scripts (elevated PowerShell)
 
 ```powershell

@@ -74,3 +74,19 @@ function ConvertFrom-CurveString([string]$Curve) {
     }
     , @($pts | Sort-Object { $_[0] })
 }
+
+# Models where fan writes have been confirmed on real hardware. Others start read-only.
+$TestedModels = @('Predator PT315-52')
+
+# Read-only check of what this laptop supports. Makes only Get calls.
+function Test-AcerSupport {
+    $r = [ordered]@{ Model = (Get-CimInstance Win32_ComputerSystem).Model; Tested = $false; Wmi = $false; Sensors = $false; Fans = $false }
+    $r.Tested = $r.Model -in $TestedModels
+    try { $m = (Get-AcerGaming).CimClass.CimClassMethods; $r.Wmi = $true } catch { return [pscustomobject]$r }
+    try { $r.Sensors = $null -ne (Get-Sensor 0x01) -and $null -ne (Get-Sensor 0x0A) } catch {}
+    try {
+        $r.Fans = $r.Sensors -and $m['SetGamingFanBehavior'] -and $m['SetGamingFanSpeed'] -and
+            -not ((Invoke-AcerGaming GetGamingFanBehavior 0x9) -band 0xFF)
+    } catch {}
+    [pscustomobject]$r
+}
