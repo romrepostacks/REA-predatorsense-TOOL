@@ -28,11 +28,28 @@ $reads = [ordered]@{
     'GetGamingFanSpeed GPU'              = @('GetGamingFanSpeed', 0x04)
     'GetGamingMiscSetting profiles'      = @('GetGamingMiscSetting', 0x0A)
     'GetGamingMiscSetting profile'       = @('GetGamingMiscSetting', 0x0B)
+    'GetGamingMiscSetting GPU OC 1'      = @('GetGamingMiscSetting', 0x05)
+    'GetGamingMiscSetting GPU OC 2'      = @('GetGamingMiscSetting', 0x07)
+    'GetGamingProfile 0'                 = @('GetGamingProfile', 0)
+    'GetGamingProfileSetting 0'          = @('GetGamingProfileSetting', 0)
+    'GetGamingFanTable'                  = @('GetGamingFanTable', 0)
+    'GetGamingLED 1'                     = @('GetGamingLED', 1)
+    'GetGamingRgbKb 0'                   = @('GetGamingRgbKb', 0)
+    'GetGamingRgbKb zone 1'              = @('GetGamingRgbKb', 1)
+    'GetGamingRgbKb zone 2'              = @('GetGamingRgbKb', 2)
+    'GetGamingRgbKb zone 3'              = @('GetGamingRgbKb', 4)
+    'GetGamingRgbKb zone 4'              = @('GetGamingRgbKb', 8)
 }
 foreach ($k in $reads.Keys) {
     try   { '{0,-36} 0x{1:X16}' -f $k, (Invoke-AcerGaming $reads[$k][0] $reads[$k][1]) }
     catch { '{0,-36} ERROR {1}' -f $k, $_.Exception.Message }
 }
+
+'GetGamingKBBacklight (raw bytes)'
+try {
+    $r = Invoke-CimMethod -InputObject (Get-AcerGaming) -MethodName GetGamingKBBacklight
+    "    return $($r.gmReturn)  bytes $(($r.gmOutput | ForEach-Object { '{0:X2}' -f $_ }) -join ' ')"
+} catch { "    ERROR $($_.Exception.Message)" }
 
 "`n== Acer/Predator services, apps and devices"
 Get-Service | Where-Object { $_.DisplayName -match 'Predator|Acer' -or $_.Name -match '^PS' } |

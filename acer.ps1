@@ -18,8 +18,9 @@ function Invoke-AcerGaming([string]$Method, [uint64]$In) {
     if (-not $m) { throw "AcerGamingFunction has no method $Method" }
     $inP  = $m.Parameters | Where-Object { $_.Qualifiers.Name -contains 'In' }  | Select-Object -First 1
     $outP = $m.Parameters | Where-Object { $_.Qualifiers.Name -contains 'Out' } | Select-Object -First 1
-    $val = if ($inP.CimType -eq 'UInt32') { [uint32]($In -band 0xFFFFFFFF) } else { $In }
-    $r = Invoke-CimMethod -InputObject $obj -MethodName $Method -Arguments @{ $inP.Name = $val }
+    $args_ = @{}
+    if ($inP) { $args_[$inP.Name] = if ($inP.CimType -eq 'UInt32') { [uint32]($In -band 0xFFFFFFFF) } else { $In } }
+    $r = Invoke-CimMethod -InputObject $obj -MethodName $Method -Arguments $args_
     $o = $r.($outP.Name)
     if ($o -is [array]) {  # byte buffer: little-endian
         $b = [byte[]]$o + [byte[]]::new(8)
