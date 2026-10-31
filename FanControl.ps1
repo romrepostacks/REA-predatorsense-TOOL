@@ -196,6 +196,7 @@ $timer.Add_Tick({ try { Update-Fans } catch { Stop-Manual "Error: $($_.Exception
 $form.Add_FormClosing({
     $timer.Stop()
     if ($script:Allowed) { try { Set-Behavior $AUTO } catch {} }
+    if ($cmbOc.Enabled -and $cmbOc.SelectedItem -ne 'Normal') { try { Set-GpuOc 0 } catch {} }
     $tray.Dispose()
 })
 

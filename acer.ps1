@@ -54,9 +54,9 @@ function Get-Status {
     }
 }
 
-# GPU overclock preset, PredatorSense's Normal/Faster/Turbo. Misc settings 5 and 7 hold it
-# (Linux acer-wmi sets both: 0 normal, 2 turbo). Faster = 1 is a guess, unconfirmed.
-$GpuOcLevels = [ordered]@{ Normal = 0; Faster = 1; Turbo = 2 }
+# GPU overclock preset. Misc settings 5 and 7 hold it (Linux acer-wmi sets both: 0 normal, 2 turbo).
+# PredatorSense's middle "Faster" level is left out until its value is confirmed.
+$GpuOcLevels = [ordered]@{ Normal = 0; Turbo = 2 }
 function Get-GpuOc {
     $r = Invoke-AcerGaming GetGamingMiscSetting 0x05
     if ($r -band 0xFF) { return $null }
