@@ -6,9 +6,13 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Version tag to publish as a GitHub release (e.g. v0.1.0); leave empty to just build'
+        required: false
 
 permissions:
-  contents: write   # needed to publish a release when a v* tag is pushed
+  contents: write   # needed to publish a release (v* tag push, or the release input on a manual run)
 
 jobs:
   build:
@@ -30,7 +34,8 @@ jobs:
           name: TalonForge
           path: app/bin/Release/net48/TalonForge.exe
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release != ''
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create ${{ github.ref_name }} app/bin/Release/net48/TalonForge.exe --title "TalonForge ${{ github.ref_name }}" --generate-notes
+          TAG: ${{ inputs.release || github.ref_name }}
+        run: gh release create $env:TAG app/bin/Release/net48/TalonForge.exe --target ${{ github.sha }} --title "TalonForge $env:TAG" --generate-notes
