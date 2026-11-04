@@ -495,6 +495,7 @@ namespace TalonForge
             PageFans.Visibility = NavFans.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             PageLighting.Visibility = NavLighting.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             PagePerformance.Visibility = NavPerformance.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            PageBench.Visibility = NavBench.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             PageSettings.Visibility = NavSettings.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             if (NavLighting.IsChecked == true) Preview_Changed(null, null);
         }
