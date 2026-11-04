@@ -237,6 +237,51 @@
                         <StackPanel>
                             <Border Style="{StaticResource CardStyle}">
                                 <StackPanel>
+                                    <DockPanel>
+                                        <TextBlock x:Name="LiveNow" DockPanel.Dock="Right" Foreground="{StaticResource Muted}"/>
+                                        <TextBlock Text="LAST 10 MINUTES" Style="{StaticResource Heading}"/>
+                                    </DockPanel>
+                                    <Border Background="{StaticResource Bg}" CornerRadius="8" Height="180" Padding="8">
+                                        <Canvas x:Name="LiveGraph" ClipToBounds="True" SizeChanged="LiveGraph_SizeChanged"/>
+                                    </Border>
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <Rectangle Width="14" Height="3" Fill="{StaticResource Accent}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="CPU" Foreground="{StaticResource Muted}" Margin="6,0,16,0"/>
+                                        <Rectangle Width="14" Height="3" Fill="#A78BFA" VerticalAlignment="Center"/>
+                                        <TextBlock Text="GPU" Foreground="{StaticResource Muted}" Margin="6,0,16,0"/>
+                                        <Rectangle Width="14" Height="1" Stroke="{StaticResource Muted}" StrokeDashArray="2 2" VerticalAlignment="Center"/>
+                                        <TextBlock Text="CPU fan rpm (right scale)" Foreground="{StaticResource Muted}" Margin="6,0,0,0"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="BENCHMARK" Style="{StaticResource Heading}"/>
+                                    <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,10"
+                                               Text="Plug in, start your load (a game, ComfyUI), then start. The fans stay in the mode you picked on the Fans page. It records average and peak temperatures, fan speeds and clocks, skipping the first fifth while things warm up, and saves the result below so you can compare curves or a repaste. Changing the fan mode stops it."/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                        <TextBlock Text="Length" Width="70" VerticalAlignment="Center"/>
+                                        <RadioButton x:Name="Bench5" Content="5 min" Tag="5" Style="{StaticResource Segment}" GroupName="BenchLen"/>
+                                        <RadioButton x:Name="Bench10" Content="10 min" Tag="10" Style="{StaticResource Segment}" GroupName="BenchLen" IsChecked="True"/>
+                                        <RadioButton x:Name="Bench20" Content="20 min" Tag="20" Style="{StaticResource Segment}" GroupName="BenchLen"/>
+                                    </StackPanel>
+                                    <DockPanel Margin="0,0,0,10">
+                                        <TextBlock Text="Label" Width="70" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="BenchLabel" ToolTip="Optional, e.g. 'new curve' or 'after repaste'"/>
+                                    </DockPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button x:Name="BenchStart" Content="Start benchmark" Style="{StaticResource Primary}" Click="BenchStart_Click"/>
+                                        <CheckBox x:Name="BenchCpuLoad" Content="Load all CPU cores during the test" IsChecked="True" Foreground="{StaticResource Text}" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="BenchMsg" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                                    <TextBlock x:Name="BenchHistory" FontFamily="Consolas" Foreground="{StaticResource Muted}" Margin="0,10,0,0"/>
+                                    <Button Content="Open results file" Click="BenchFile_Click" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource CardStyle}">
+                                <StackPanel>
                                     <TextBlock Text="MONITOR LOG" Style="{StaticResource Heading}"/>
                                     <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,0,0,10"
                                                Text="Records temperatures, fan speeds, and CPU and GPU usage every 2 seconds to its own file, without changing the fans. Use it while you work or play, then send the file for review."/>

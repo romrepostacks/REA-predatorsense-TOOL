@@ -36,6 +36,10 @@ namespace TalonForge
         string Mode = "Auto";
         FanCurve Cpu, Gpu;                    // each fan's curve and smoothing state
         SmartTune Tune;                       // set while Mode == "Tune"
+        BenchRun Bench;                       // set while a benchmark runs
+        const int LiveSamples = 300;          // live graph: 10 minutes at one reading per 2 s
+        readonly System.Collections.Generic.Queue<(int? Cpu, int? Gpu, int? Rpm)> Live =
+            new System.Collections.Generic.Queue<(int?, int?, int?)>();
         double LastCpuTemp = 50;
         bool Loading = true, Quitting;
 
@@ -154,6 +158,7 @@ namespace TalonForge
             Tray.Text = $"CPU {ct}°C  GPU {gt}°C  ({Mode})";
             SideStatus.Text = $"Fans: {Mode}";
             DrawCurveMarker(ct);
+            RecordBench(ct, gt, cr, gr);
 
             if (Mode != "Custom" && Mode != "Curve" && Mode != "Tune") { FanLog.Write(Mode, ct, gt, null, null, cr, gr); ShowLogStatus(); return; }
             if (ct == null || gt == null) { StopManual("Lost the temperature reading."); return; }
@@ -215,6 +220,92 @@ namespace TalonForge
         {
             if (FanLog.Session != null)
                 LogMsg.Text = $"Logging: {FanLog.SessionRows} readings ({FanLog.SessionRows * 2 / 60} min) to {System.IO.Path.GetFileName(FanLog.Session)}";
+        }
+
+        // ---- Benchmark and live graph: record only, never change the fans ----
+
+        void RecordBench(int? ct, int? gt, int? cr, int? gr)
+        {
+            Live.Enqueue((ct, gt, cr));
+            while (Live.Count > LiveSamples) Live.Dequeue();
+            LiveNow.Text = $"CPU {ct}°C   GPU {gt}°C   {cr} / {gr} rpm";
+            if (PageBench.Visibility == Visibility.Visible) DrawLive();
+
+            if (Bench == null) return;
+            if (Mode != Bench.Mode) { EndBench("Benchmark stopped: the fan mode changed. Nothing was saved."); return; }
+            Bench.Add(ct, gt, cr, gr, Usage.CpuSpeed, Usage.GpuMhz, Usage.GpuWatts);
+            var now = DateTime.Now;
+            if (!Bench.Done(now)) { BenchMsg.Text = $"Running: {Bench.Elapsed(now) / 60:0.0} of {Bench.Seconds / 60} min, {Bench.Count} readings."; return; }
+            var summary = Bench.Summary();
+            try { Bench.Save(); EndBench("Done. " + summary); }
+            catch (Exception ex) { EndBench("Done, but the result couldn't be saved (" + ex.Message + "). " + summary); }
+        }
+
+        void BenchStart_Click(object sender, RoutedEventArgs e)
+        {
+            if (Bench != null) { EndBench("Benchmark stopped. Nothing was saved."); return; }
+            if (!Sup.Sensors) { BenchMsg.Text = "Temperature sensors aren't available on this model."; return; }
+            if (Mode == "Tune") { BenchMsg.Text = "Wait for Smart Tune to finish first."; return; }
+            if (WinForms.SystemInformation.PowerStatus.PowerLineStatus != WinForms.PowerLineStatus.Online)
+            { BenchMsg.Text = "Plug in the charger first: on battery the laptop limits power, so results wouldn't compare."; return; }
+            int min = int.Parse((string)new[] { Bench5, Bench10, Bench20 }.First(r => r.IsChecked == true).Tag);
+            var setup = Mode == "Curve" ? (Linked ? CurveText.Text : CurveText.Text + " | GPU " + GpuText)
+                      : Mode == "Custom" ? $"CPU {CpuSlider.Value}% GPU {GpuSlider.Value}%" : "";
+            Bench = new BenchRun(min * 60, Mode, setup, BenchLabel.Text);
+            if (BenchCpuLoad.IsChecked == true) CpuLoad.Start();
+            BenchStart.Content = "Stop";
+            BenchMsg.Text = $"Running: 0 of {min} min.";
+        }
+
+        void EndBench(string msg)
+        {
+            if (Tune == null) CpuLoad.Stop();      // Smart Tune may have taken over the CPU load
+            Bench = null;
+            BenchStart.Content = "Start benchmark";
+            BenchMsg.Text = msg;
+            BenchHistory.Text = BenchRun.History();
+        }
+
+        void BenchFile_Click(object sender, RoutedEventArgs e)
+        {
+            if (System.IO.File.Exists(BenchRun.Path)) Process.Start(BenchRun.Path);
+            else BenchMsg.Text = "No results yet. Finish a benchmark first.";
+        }
+
+        void LiveGraph_SizeChanged(object sender, SizeChangedEventArgs e) => DrawLive();
+
+        // Temperatures on a fixed 30-100°C scale, CPU fan rpm dashed on a 0-6000 scale; newest reading on the right.
+        void DrawLive()
+        {
+            double w = LiveGraph.ActualWidth, h = LiveGraph.ActualHeight;
+            if (w <= 0 || h <= 0) return;
+            const double Lo = 30, Hi = 100, MaxRpm = 6000;
+            var muted = (Brush)FindResource("Muted");
+            LiveGraph.Children.Clear();
+            double Y(double t) => h - (Math.Max(Lo, Math.Min(Hi, t)) - Lo) / (Hi - Lo) * h;
+            foreach (var t in new[] { 50, 70, 90 })
+            {
+                LiveGraph.Children.Add(new Line { X1 = 0, X2 = w, Y1 = Y(t), Y2 = Y(t), Stroke = (Brush)FindResource("Line"), StrokeThickness = 1 });
+                var label = new TextBlock { Text = t + "°", FontSize = 10, Foreground = muted };
+                Canvas.SetTop(label, Y(t) - 14); LiveGraph.Children.Add(label);
+            }
+            var rpmLabel = new TextBlock { Text = "6000 rpm", FontSize = 10, Foreground = muted };
+            Canvas.SetRight(rpmLabel, 0); LiveGraph.Children.Add(rpmLabel);
+
+            var items = Live.ToArray();
+            double dx = w / (LiveSamples - 1);
+            int off = LiveSamples - items.Length;
+            void Add(Brush b, double thick, DoubleCollection dash, Func<(int? Cpu, int? Gpu, int? Rpm), int?> pick, Func<double, double> y)
+            {
+                var p = new Polyline { Stroke = b, StrokeThickness = thick, StrokeLineJoin = PenLineJoin.Round };
+                if (dash != null) p.StrokeDashArray = dash;
+                for (int i = 0; i < items.Length; i++)
+                    if (pick(items[i]) is int v && v > 0) p.Points.Add(new Point((off + i) * dx, y(v)));
+                LiveGraph.Children.Add(p);
+            }
+            Add(muted, 1, new DoubleCollection { 2, 2 }, r => r.Rpm, v => h - Math.Min(v, MaxRpm) / MaxRpm * h);
+            Add(new SolidColorBrush(Color.FromRgb(0xA7, 0x8B, 0xFA)), 2, null, r => r.Gpu, Y);
+            Add((Brush)FindResource("Accent"), 2, null, r => r.Cpu, Y);
         }
 
         // ---- Smart Tune ----
@@ -498,6 +589,7 @@ namespace TalonForge
             PageBench.Visibility = NavBench.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             PageSettings.Visibility = NavSettings.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             if (NavLighting.IsChecked == true) Preview_Changed(null, null);
+            if (NavBench.IsChecked == true) { DrawLive(); if (Bench == null) BenchHistory.Text = BenchRun.History(); }
         }
 
         void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

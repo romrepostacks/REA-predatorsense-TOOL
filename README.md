@@ -28,6 +28,9 @@ the latest Actions run). It has fan modes and curves, keyboard lighting, GPU pre
 - **Smart Tune** (Benchmarking page): run a game, plug in, and start it. Both fans start at 100% and step
   down through 85/70/55/40%, holding each until temperatures settle (stopping the descent at 98°C), then it picks the speed past which more
   rpm buys under 2°C per 1000 rpm and builds a curve around it (no steeper than 3% per °C). Nothing changes until you click *Use this curve*.
+- **Benchmark** (Benchmarking page): a 5, 10 or 20 minute run under your own load (plus optional all-core CPU load) in your current fan mode.
+  It saves average and peak CPU/GPU temperature, fan rpm, CPU speed and GPU clock/power (averages skip the first 20% warm-up) to
+  `%APPDATA%\TalonForge\benchmarks.csv` and lists the last 10 runs, so you can compare curves or a repaste. A live graph shows the last 10 minutes.
 - **Monitor log** (Benchmarking page): Start/Stop logging records temps, fan speeds and CPU/GPU usage every 2 s to its own file. Every reading also goes to `%APPDATA%\TalonForge\fanlog.csv`.
 
 ## PowerShell app
